@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "dermAI",
+    "slug": "dermai",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/branding/app-icon-square.png",
+    "scheme": "dermaai",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.dermai.app"
+    },
+    "android": {
+      "package": "com.dermai.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/branding/adaptive-icon-foreground-square.png",
+        "backgroundColor": "#0E74C8"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/branding/app-icon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/Splash-screen.png",
+          "resizeMode": "cover",
+          "backgroundColor": "#F4F8FC",
+          "dark": {
+            "backgroundColor": "#F4F8FC"
+          }
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "dermAI needs access to your photos so you can upload a clear face photo for skin analysis."
+        }
+      ],
+      "expo-font",
+      "expo-image",
+      "expo-web-browser",
+      "expo-status-bar"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

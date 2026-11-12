@@ -1,0 +1,7 @@
+export const SPLASH_BACKGROUND = '#F4F8FC';
+
+export const ANDROID_ADAPTIVE_ICON_BACKGROUND = '#0E74C8';
+
+export const BRANDED_SPLASH_DURATION_MS = 800;
+
+export const APP_INIT_MIN_MS = 650;
