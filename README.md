@@ -37,4 +37,4 @@ npm ci
 npx expo start
 ```
 
-Requires Node.js 22.13+ and Expo Go with SDK 58 support (or a development build).
+Requires Node.js 22.13+ and Expo Go with SDK 58 support (or a development build). Full list in [REQUIREMENTS.md](REQUIREMENTS.md).
