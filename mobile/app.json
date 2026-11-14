@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "dermAI",
+    "name": "DermAI",
     "slug": "dermai",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/branding/app-icon-square.png",
     "scheme": "dermaai",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.dermai.app"
@@ -15,7 +15,7 @@
       "package": "com.dermai.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/branding/adaptive-icon-foreground-square.png",
-        "backgroundColor": "#0E74C8"
+        "backgroundColor": "#0E2A33"
       },
       "predictiveBackGestureEnabled": false
     },
@@ -30,22 +30,35 @@
         {
           "image": "./assets/Splash-screen.png",
           "resizeMode": "cover",
-          "backgroundColor": "#F4F8FC",
+          "backgroundColor": "#0E2A33",
           "dark": {
-            "backgroundColor": "#F4F8FC"
+            "backgroundColor": "#0E2A33"
           }
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "dermAI needs access to your photos so you can upload a clear face photo for skin analysis."
+          "photosPermission": "DermAI needs your photos so you can upload a face photo for skin analysis or send one to your dermatologist."
         }
       ],
       "expo-font",
       "expo-image",
       "expo-web-browser",
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "DermAI uses the camera to take a photo of your face for skin analysis. Photos stay private to you.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "DermAI adds your dermatologist visits to your calendar when you ask it to."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

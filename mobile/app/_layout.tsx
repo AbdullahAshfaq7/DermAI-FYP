@@ -1,129 +1,61 @@
-import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider as NavigationThemeProvider,
-} from 'expo-router/react-navigation';
+import { DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold } from '@expo-google-fonts/dm-sans';
+import { Sora_500Medium, Sora_600SemiBold } from '@expo-google-fonts/sora';
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
+import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from 'expo-router/react-navigation';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { BrandedSplashScreen } from '@/components/branding/BrandedSplashScreen';
-import { SPLASH_BACKGROUND } from '@/constants/branding';
-import { NotificationsProvider } from '@/context/NotificationsContext';
-import { RecommendationsProvider } from '@/context/RecommendationsContext';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { initializeApp } from '@/lib/initialize-app';
-import { ThemeProvider as AppThemeProvider } from '@/theme/ThemeProvider';
+import { AppStoreProvider } from '@/store/AppStore';
+import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
 
-SplashScreen.preventAutoHideAsync().catch(() => {
-  // Splash may already be hidden during fast refresh in development.
-});
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+export const unstable_settings = { anchor: 'index' };
+
+function Navigator() {
+  const { isDark, colors } = useTheme();
+  const base = isDark ? DarkTheme : DefaultTheme;
+  return (
+    <NavigationThemeProvider
+      value={{ ...base, colors: { ...base.colors, background: colors.bg, card: colors.surface, text: colors.textPrimary, border: colors.border, primary: colors.brand } }}>
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
+        <Stack.Screen name="index" options={{ animation: 'fade' }} />
+        <Stack.Screen name="(patient)" options={{ animation: 'fade' }} />
+        <Stack.Screen name="(derm)" options={{ animation: 'fade' }} />
+        <Stack.Screen name="scan" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
+        <Stack.Screen name="booked/[id]" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="assess/[id]" options={{ presentation: 'modal' }} />
+      </Stack>
+    </NavigationThemeProvider>
+  );
+}
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [isAppReady, setIsAppReady] = useState(false);
-  const [isNativeSplashHidden, setIsNativeSplashHidden] = useState(false);
-  const [showBrandedSplash, setShowBrandedSplash] = useState(true);
+  const [fontsLoaded, fontError] = useFonts({
+    Sora_500Medium,
+    Sora_600SemiBold,
+    DMSans_400Regular,
+    DMSans_500Medium,
+    DMSans_600SemiBold,
+  });
+  const fontsReady = fontsLoaded || !!fontError;
 
   useEffect(() => {
-    let isMounted = true;
+    if (fontsReady) SplashScreen.hideAsync().catch(() => {});
+  }, [fontsReady]);
 
-    async function prepare() {
-      try {
-        await initializeApp();
-      } catch (error) {
-        console.warn('App initialization failed:', error);
-      } finally {
-        if (isMounted) {
-          setIsAppReady(true);
-        }
-      }
-    }
-
-    prepare();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isAppReady || isNativeSplashHidden) {
-      return;
-    }
-
-    let isMounted = true;
-
-    async function hideNativeSplash() {
-      try {
-        await SplashScreen.hideAsync();
-      } catch (error) {
-        console.warn('Failed to hide native splash screen:', error);
-      } finally {
-        if (isMounted) {
-          setIsNativeSplashHidden(true);
-        }
-      }
-    }
-
-    hideNativeSplash();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [isAppReady, isNativeSplashHidden]);
-
-  // Safety net so the splash cannot remain stuck if init/hide fails.
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      setIsAppReady(true);
-      setIsNativeSplashHidden(true);
-      setShowBrandedSplash(false);
-      SplashScreen.hideAsync().catch(() => {});
-    }, 4000);
-
-    return () => clearTimeout(timeout);
-  }, []);
-
-  const handleBrandedSplashFinish = () => {
-    setShowBrandedSplash(false);
-  };
-
-  const showMainApp = isAppReady && isNativeSplashHidden && !showBrandedSplash;
+  if (!fontsReady) return null;
 
   return (
     <SafeAreaProvider>
-      <View style={{ flex: 1, backgroundColor: SPLASH_BACKGROUND }}>
-        {showMainApp ? (
-          <AppThemeProvider>
-            <RecommendationsProvider>
-              <NotificationsProvider>
-              <NavigationThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-                <Stack screenOptions={{ headerBackTitle: 'Back' }}>
-                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                  <Stack.Screen name="recommendations" options={{ headerShown: false }} />
-                  <Stack.Screen name="notifications" options={{ headerShown: false, presentation: 'card' }} />
-                  <Stack.Screen name="settings" options={{ headerShown: false, presentation: 'card' }} />
-                  <Stack.Screen name="scan" options={{ headerShown: false, presentation: 'card' }} />
-                  <Stack.Screen name="pre-scan" options={{ headerShown: false, presentation: 'card' }} />
-                </Stack>
-              </NavigationThemeProvider>
-              </NotificationsProvider>
-            </RecommendationsProvider>
-          </AppThemeProvider>
-        ) : null}
-
-        {isNativeSplashHidden && showBrandedSplash ? (
-          <BrandedSplashScreen onFinish={handleBrandedSplashFinish} />
-        ) : null}
-      </View>
+      <ThemeProvider>
+        <AppStoreProvider>
+          <Navigator />
+        </AppStoreProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

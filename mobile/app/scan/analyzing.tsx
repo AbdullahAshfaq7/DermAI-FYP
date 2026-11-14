@@ -1,189 +1,78 @@
-import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, BackHandler, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import { BackHandler, View } from 'react-native';
 
-import { AnalysisProgress } from '@/components/scan/AnalysisProgress';
-import { ScanDisclaimer } from '@/components/scan/ScanDisclaimer';
-import { SPACING } from '@/constants/homeTheme';
-import { APP_ROUTES } from '@/constants/navigation';
-import { ABSOLUTE_FILL_STYLE } from '@/constants/layout';
-import { getScanColors, SCAN_CAMERA_BG_DEEP } from '@/constants/scanTheme';
-import { ANALYSIS_STAGES } from '@/data/skinScanResult';
-import { useScan } from '@/context/ScanContext';
-import { useAppTheme } from '@/theme/useAppTheme';
+import { Button, ProgressBar, Screen, Txt } from '@/components/ui/kit';
+import { FaceMap, ScanSweep } from '@/components/visual';
+import { ANALYSIS_STAGES } from '@/lib/analysis';
+import { useActions } from '@/store/AppStore';
+import { useTheme } from '@/theme/ThemeProvider';
+import { space } from '@/theme/tokens';
 
-const ANALYSIS_DURATION_MS = 5000;
-const TICK_INTERVAL_MS = 50;
+const TOTAL_MS = 8000;
 
-function getStageLabel(progress: number): string {
-  const stage = ANALYSIS_STAGES.find((item) => progress >= item.min && progress <= item.max);
-  return stage?.label ?? ANALYSIS_STAGES[ANALYSIS_STAGES.length - 1].label;
-}
+/** C4 Analysing: stage labels from the pipeline; the person can leave and get notified. */
+export default function Analyzing() {
+  const { colors } = useTheme();
+  const { uri, dim } = useLocalSearchParams<{ uri: string; dim?: string }>();
+  const { runAnalysis } = useActions();
+  const [elapsed, setElapsed] = useState(0);
+  const done = useRef(false);
 
-function createAnalyzingStyles(scanColors: ReturnType<typeof getScanColors>) {
-  return StyleSheet.create({
-    root: {
-      flex: 1,
-      backgroundColor: SCAN_CAMERA_BG_DEEP,
-    },
-    backgroundImage: {
-      ...ABSOLUTE_FILL_STYLE,
-      opacity: 0.25,
-    },
-    overlay: {
-      ...ABSOLUTE_FILL_STYLE,
-      backgroundColor: 'rgba(10, 22, 40, 0.88)',
-    },
-    safeArea: {
-      flex: 1,
-    },
-    content: {
-      flex: 1,
-      justifyContent: 'center',
-      paddingHorizontal: SPACING.lg,
-      gap: SPACING.lg,
-    },
-    imageCard: {
-      alignSelf: 'center',
-      width: 140,
-      height: 140,
-      borderRadius: 70,
-      overflow: 'hidden',
-      marginBottom: SPACING.sm,
-    },
-    faceImage: {
-      width: '100%',
-      height: '100%',
-    },
-    imageBorder: {
-      ...ABSOLUTE_FILL_STYLE,
-      borderRadius: 70,
-      borderWidth: 3,
-      borderColor: scanColors.guideCorner,
-    },
-  });
-}
-
-export default function ScanAnalyzingScreen() {
-  const router = useRouter();
-  const { session, startAnalysis, completeAnalysis } = useScan();
-  const [progress, setProgress] = useState(0);
-  const { colors } = useAppTheme();
-  const scanColors = useMemo(() => getScanColors(colors), [colors]);
-  const styles = useMemo(() => createAnalyzingStyles(scanColors), [scanColors]);
-
-  const startTimeRef = useRef<number | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const hasCompletedRef = useRef(false);
-  const hasStartedAnalysisRef = useRef(false);
+  const finish = (leave: boolean) => {
+    if (done.current) return;
+    done.current = true;
+    const scan = runAnalysis(uri ?? '', dim === '1');
+    if (leave) router.dismissTo('/home');
+    else router.replace({ pathname: '/scan/results/[id]', params: { id: scan.id, fresh: '1' } });
+  };
 
   useEffect(() => {
-    if (!session.photoUri) {
-      router.replace(APP_ROUTES.scan);
-      return;
-    }
-
-    if (session.analysisStatus === 'idle') {
-      router.replace(APP_ROUTES.scan);
-      return;
-    }
-
-    if (session.analysisStatus === 'completed') {
-      router.replace(APP_ROUTES.scanResults);
-      return;
-    }
-
-    if (session.analysisStatus === 'captured') {
-      if (!hasStartedAnalysisRef.current) {
-        hasStartedAnalysisRef.current = true;
-        startAnalysis();
+    const start = Date.now();
+    const t = setInterval(() => {
+      const e = Date.now() - start;
+      setElapsed(e);
+      if (e >= TOTAL_MS) {
+        clearInterval(t);
+        finish(false);
       }
-      return;
-    }
-
-    hasStartedAnalysisRef.current = true;
-  }, [router, session.analysisStatus, session.photoUri, startAnalysis]);
-
-  const finishAnalysis = useCallback(() => {
-    if (hasCompletedRef.current) {
-      return;
-    }
-    hasCompletedRef.current = true;
-    setProgress(100);
-    completeAnalysis();
-    router.replace(APP_ROUTES.scanResults);
-  }, [completeAnalysis, router]);
-
-  useEffect(() => {
-    if (session.analysisStatus !== 'analyzing' && session.analysisStatus !== 'captured') {
-      return;
-    }
-
-    startTimeRef.current = Date.now();
-    hasCompletedRef.current = false;
-
-    intervalRef.current = setInterval(() => {
-      const elapsed = Date.now() - (startTimeRef.current ?? Date.now());
-      const nextProgress = Math.min((elapsed / ANALYSIS_DURATION_MS) * 100, 100);
-      setProgress(nextProgress);
-
-      if (nextProgress >= 100) {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-        }
-        finishAnalysis();
-      }
-    }, TICK_INTERVAL_MS);
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [finishAnalysis, session.analysisStatus]);
-
-  useEffect(() => {
-    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      Alert.alert(
-        'Leave analysis?',
-        'Your scan is still being processed. Leaving now will cancel the analysis.',
-        [
-          { text: 'Stay', style: 'cancel' },
-          {
-            text: 'Leave',
-            style: 'destructive',
-            onPress: () => router.replace(APP_ROUTES.scanReview),
-          },
-        ],
-      );
+    }, 200);
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      finish(true);
       return true;
     });
+    return () => {
+      clearInterval(t);
+      sub.remove();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    return () => subscription.remove();
-  }, [router]);
-
-  if (!session.photoUri) {
-    return null;
-  }
+  const stage = Math.min(ANALYSIS_STAGES.length - 1, Math.floor((elapsed / TOTAL_MS) * ANALYSIS_STAGES.length));
+  const secondsLeft = Math.max(1, Math.ceil((TOTAL_MS - elapsed) / 1000));
 
   return (
-    <View style={styles.root}>
-      <Image source={{ uri: session.photoUri }} style={styles.backgroundImage} contentFit="cover" />
-      <View style={styles.overlay} />
-
-      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        <View style={styles.content}>
-          <View style={styles.imageCard}>
-            <Image source={{ uri: session.photoUri }} style={styles.faceImage} contentFit="cover" />
-            <View style={styles.imageBorder} />
-          </View>
-
-          <AnalysisProgress progress={progress} stageLabel={getStageLabel(progress)} />
-          <ScanDisclaimer variant="dark" />
+    <Screen scroll={false} edges={['top', 'bottom']} footer={<Button label="Leave and notify me" variant="secondary" onPress={() => finish(true)} />}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.xl }}>
+        <View style={{ borderRadius: 90, overflow: 'hidden' }}>
+          <FaceMap zones={null} width={180} />
+          <ScanSweep width={180} height={225} />
         </View>
-      </SafeAreaView>
-    </View>
+        <View style={{ alignItems: 'center', gap: space.xs }} accessibilityLiveRegion="polite">
+          <Txt variant="title" align="center">
+            {ANALYSIS_STAGES[stage]}
+          </Txt>
+          <Txt variant="small" color="secondary">
+            Step {stage + 1} of {ANALYSIS_STAGES.length} · about {secondsLeft} seconds left
+          </Txt>
+        </View>
+        <View style={{ alignSelf: 'stretch' }}>
+          <ProgressBar value={(elapsed / TOTAL_MS) * 100} color={colors.brand} />
+        </View>
+        <Txt variant="small" color="secondary" align="center">
+          You can leave this screen. We&apos;ll notify you when it&apos;s ready.
+        </Txt>
+      </View>
+    </Screen>
   );
 }

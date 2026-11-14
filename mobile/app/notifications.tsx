@@ -1,75 +1,75 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import type { RelativePathString } from 'expo-router';
-import { useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
-import { NotificationItem } from '@/components/notifications/NotificationItem';
-import { NotificationsListHeader } from '@/components/notifications/NotificationsListHeader';
-import { AppCard } from '@/components/ui/AppCard';
-import { AppScreen } from '@/components/ui/AppScreen';
-import { AppText } from '@/components/ui/AppText';
-import { APP_ROUTES } from '@/constants/navigation';
-import { useNotifications } from '@/context/NotificationsContext';
-import { AppNotification } from '@/data/notifications';
-import { useAppTheme } from '@/theme/useAppTheme';
-import { spacing } from '@/theme/tokens';
+import { EmptyState, IconTile, List, Row, Screen, TopBar, Txt } from '@/components/ui/kit';
+import { daysBetween, relativeStamp } from '@/lib/format';
+import { go } from '@/lib/nav';
+import { useActions, useApp } from '@/store/AppStore';
+import { useTheme } from '@/theme/ThemeProvider';
+import { space } from '@/theme/tokens';
 
-export default function NotificationsScreen() {
-  const router = useRouter();
-  const { colors } = useAppTheme();
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+/** F2 Notifications: grouped by day; each opens the screen it's about. */
+export default function Notifications() {
+  const { colors } = useTheme();
+  const s = useApp();
+  const { markNotificationRead, markAllNotificationsRead } = useActions();
+  const list = [...s.notifications].sort((a, b) => b.at.localeCompare(a.at));
+  const today = list.filter((n) => daysBetween(n.at, new Date()) <= 0);
+  const earlier = list.filter((n) => daysBetween(n.at, new Date()) > 0);
+  const anyUnread = list.some((n) => !n.read);
 
-  const styles = useMemo(
-    () =>
-      StyleSheet.create({
-        emptyWrap: {
-          alignItems: 'center',
-          paddingVertical: spacing.xxl,
-          gap: spacing.sm,
-        },
-      }),
-    [],
-  );
-
-  const handleNotificationPress = (notification: AppNotification) => {
-    markAsRead(notification.id);
-
-    if (notification.actionRoute) {
-      router.push(notification.actionRoute as RelativePathString);
-    }
-  };
-
-  return (
-    <AppScreen scroll edges={['top', 'bottom']} contentContainerStyle={{ paddingBottom: spacing.xxl }}>
-      <NotificationsListHeader
-        unreadCount={unreadCount}
-        onMarkAllRead={markAllAsRead}
-        onOpenSettings={() => router.push(APP_ROUTES.settingsNotifications)}
-      />
-
-      {notifications.length === 0 ? (
-        <View style={styles.emptyWrap}>
-          <Ionicons name="notifications-off-outline" size={44} color={colors.iconMuted} />
-          <AppText variant="subtitle" weight="600">
-            No notifications yet
-          </AppText>
-          <AppText variant="body" color="secondary" style={{ textAlign: 'center' }}>
-            Scan updates, routine reminders, and recommendations will appear here.
-          </AppText>
-        </View>
-      ) : (
-        <AppCard elevated padding="lg">
-          {notifications.map((notification, index) => (
-            <NotificationItem
-              key={notification.id}
-              notification={notification}
-              onPress={handleNotificationPress}
-              isLast={index === notifications.length - 1}
+  const section = (title: string, items: typeof list) =>
+    items.length ? (
+      <View style={{ gap: space.sm }}>
+        <Txt variant="smallStrong" color="secondary">
+          {title}
+        </Txt>
+        <List>
+          {items.map((n) => (
+            <Row
+              key={n.id}
+              leading={<IconTile icon={n.icon} tone={n.read ? 'muted' : 'brand'} />}
+              title={n.title}
+              subtitle={n.body}
+              right={
+                <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                  <Txt variant="caption" color="muted">
+                    {relativeStamp(n.at)}
+                  </Txt>
+                  {!n.read ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.brand }} accessibilityLabel="Unread" /> : null}
+                </View>
+              }
+              onPress={() => {
+                markNotificationRead(n.id);
+                go(n.href);
+              }}
             />
           ))}
-        </AppCard>
+        </List>
+      </View>
+    ) : null;
+
+  return (
+    <Screen
+      header={
+        <TopBar
+          right={
+            anyUnread ? (
+              <Txt variant="smallStrong" color="brand" onPress={markAllNotificationsRead} style={{ padding: space.sm }}>
+                Mark all read
+              </Txt>
+            ) : null
+          }
+        />
+      }>
+      <Txt variant="display">Notifications</Txt>
+      {list.length === 0 ? (
+        <EmptyState icon="notifications-none" title="Nothing yet" body="Scan results, routine reminders and doctor replies will show up here." />
+      ) : (
+        <>
+          {section('Today', today)}
+          {section('Earlier', earlier)}
+        </>
       )}
-    </AppScreen>
+    </Screen>
   );
 }

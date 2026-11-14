@@ -21,7 +21,7 @@ DermAI/
 
 | Part | Status |
 | --- | --- |
-| Mobile UI (scan flow, results, routine, chat, recommendations, profile, settings, light/dark) | Built, running on mock data |
+| Mobile UI: all 44 storyboard screens, patient and dermatologist roles, light/dark | Built, running on demo data stored on the device |
 | Accounts / auth | Not started |
 | Backend API + database | Not started |
 | Skin-analysis model | Not started |
