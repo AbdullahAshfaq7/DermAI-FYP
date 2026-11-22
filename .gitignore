@@ -5,3 +5,6 @@ node_modules/
 *.pem
 __pycache__/
 .venv/
+backend/.pgdata/
+backend/storage/
+mobile/.expo/

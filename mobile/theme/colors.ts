@@ -1,4 +1,8 @@
-/** Design tokens from Claude outputs/design.md, section 3. */
+/**
+ * Lumen design tokens (storyboard v3, 20 Nov 2026).
+ * Lamp violet on pearl for patients, Night for the scan flow, Emerald for dermatologists.
+ * Token names are shared by every screen; the role and night variants swap values, not names.
+ */
 
 export type ResolvedTheme = 'light' | 'dark';
 export type ThemePreference = ResolvedTheme | 'system';
@@ -12,17 +16,26 @@ export interface ThemeColors {
   textPrimary: string;
   textSecondary: string;
   textMuted: string;
-  /** Text and icons on Ink, brand or clinician fills. */
+  /** Text and icons on Lamp, Emerald or Aubergine fills. */
   onFill: string;
-  /** Primary button fill (Ink in light, light ink in dark). */
+  /** Dark button fill (Aubergine), light in dark mode. */
   ink: string;
   onInk: string;
+  /** Lamp violet: actions, progress, selection. */
   brand: string;
   brandDeep: string;
   brandWash: string;
+  brandSoft: string;
+  /** Emerald: dermatologist-only. */
   clinician: string;
   clinicianDeep: string;
   clinicianWash: string;
+  peach: string;
+  peachDeep: string;
+  peachWash: string;
+  butter: string;
+  butterDeep: string;
+  butterWash: string;
   good: string;
   goodIcon: string;
   goodWash: string;
@@ -34,82 +47,127 @@ export interface ThemeColors {
   actWash: string;
   scrim: string;
   camera: string;
+  /** Soft drop shadow colour for cards (light) or none (dark). */
+  shadow: string;
+  /** Background of the floating dock. */
+  dock: string;
 }
 
 export const lightColors: ThemeColors = {
-  bg: '#F4F7F6',
+  bg: '#F7F4FB',
   surface: '#FFFFFF',
-  surfaceMuted: '#EAF0EE',
-  border: '#DCE4E2',
-  hairline: '#E6ECEA',
-  textPrimary: '#0E2A33',
-  textSecondary: '#4A5F66',
-  textMuted: '#84969B',
+  surfaceMuted: '#F0EBF7',
+  border: '#E7E0F1',
+  hairline: '#EEE8F5',
+  textPrimary: '#21143A',
+  textSecondary: '#615578',
+  textMuted: '#9A90AE',
   onFill: '#FFFFFF',
-  ink: '#0E2A33',
+  ink: '#21143A',
   onInk: '#FFFFFF',
-  brand: '#1F7A72',
-  brandDeep: '#155C56',
-  brandWash: '#E1F0EC',
-  clinician: '#4A3D78',
-  clinicianDeep: '#3A2F60',
-  clinicianWash: '#EEEAF7',
-  good: '#23704A',
-  goodIcon: '#2F8F5B',
-  goodWash: '#E3F2EA',
-  watch: '#8C6110',
-  watchIcon: '#B9811A',
-  watchWash: '#FBF0D9',
-  act: '#A3362E',
-  actIcon: '#C2463D',
-  actWash: '#F8E2DF',
-  scrim: 'rgba(14, 42, 51, 0.45)',
-  camera: '#16282E',
+  brand: '#5B3DF5',
+  brandDeep: '#4327D6',
+  brandWash: '#EEEAFF',
+  brandSoft: '#D8CFFF',
+  clinician: '#0B8A63',
+  clinicianDeep: '#06694B',
+  clinicianWash: '#E0F4EC',
+  peach: '#FF8F6B',
+  peachDeep: '#C4532F',
+  peachWash: '#FFEEE6',
+  butter: '#FFD66E',
+  butterDeep: '#7A5600',
+  butterWash: '#FFF5D6',
+  good: '#17855A',
+  goodIcon: '#17855A',
+  goodWash: '#E1F4EA',
+  watch: '#9A6500',
+  watchIcon: '#C98B10',
+  watchWash: '#FFF1D1',
+  act: '#C8363A',
+  actIcon: '#C8363A',
+  actWash: '#FDE5E4',
+  scrim: 'rgba(33, 20, 58, 0.45)',
+  camera: '#150E26',
+  shadow: 'rgba(33, 20, 58, 0.14)',
+  dock: 'rgba(255, 255, 255, 0.97)',
 };
 
 export const darkColors: ThemeColors = {
-  bg: '#0B1F25',
-  surface: '#122A31',
-  surfaceMuted: '#18343C',
-  border: '#24434B',
-  hairline: '#1E3A42',
-  textPrimary: '#E8F0EE',
-  textSecondary: '#A9BCBA',
-  textMuted: '#6F8789',
+  bg: '#120C1F',
+  surface: '#1C1530',
+  surfaceMuted: '#261E3D',
+  border: '#2F2648',
+  hairline: '#2A2242',
+  textPrimary: '#F0EBFA',
+  textSecondary: '#AEA3C6',
+  textMuted: '#7C7196',
   onFill: '#FFFFFF',
-  ink: '#E8F0EE',
-  onInk: '#0B1F25',
-  brand: '#4FB3A6',
-  brandDeep: '#7FD3C5',
-  brandWash: '#173E3B',
-  clinician: '#B4A7E8',
-  clinicianDeep: '#CFC5F2',
-  clinicianWash: '#2A2547',
-  good: '#7FD3A3',
-  goodIcon: '#5CBF88',
-  goodWash: '#183A2A',
-  watch: '#E9C277',
-  watchIcon: '#D9A846',
-  watchWash: '#3A2F17',
-  act: '#F09A90',
-  actIcon: '#E2766B',
-  actWash: '#43231F',
+  ink: '#F0EBFA',
+  onInk: '#150E26',
+  brand: '#8C7BFF',
+  brandDeep: '#B9AEFF',
+  brandWash: '#2A2252',
+  brandSoft: '#3D3375',
+  clinician: '#4FD1A5',
+  clinicianDeep: '#8BE6C6',
+  clinicianWash: '#123A2E',
+  peach: '#FF9E80',
+  peachDeep: '#FFB79F',
+  peachWash: '#3A2320',
+  butter: '#FFD66E',
+  butterDeep: '#FFE29A',
+  butterWash: '#352B14',
+  good: '#6FDCA8',
+  goodIcon: '#4FC98F',
+  goodWash: '#143326',
+  watch: '#F2C46B',
+  watchIcon: '#E5AE3F',
+  watchWash: '#352A12',
+  act: '#FF8E8A',
+  actIcon: '#F06A66',
+  actWash: '#3D1C20',
   scrim: 'rgba(0, 0, 0, 0.6)',
-  camera: '#0C1A1E',
+  camera: '#0D0818',
+  shadow: 'rgba(0, 0, 0, 0)',
+  dock: 'rgba(33, 26, 54, 0.97)',
 };
 
-/** Concern scale: face map and concern bars only. */
+/** Night: camera, analysis and results, so skin and the map are the brightest things on screen. */
+export const nightColors: ThemeColors = {
+  ...darkColors,
+  bg: '#150E26',
+  surface: '#211839',
+  surfaceMuted: '#2D2350',
+  border: '#3A2F63',
+  hairline: '#2D2350',
+  textPrimary: '#EEE9FF',
+  textSecondary: '#B3A9D6',
+  textMuted: '#8C82B0',
+  brand: '#7B63FF',
+  brandDeep: '#C9BEFF',
+  brandWash: '#2D2350',
+  camera: '#150E26',
+};
+
+/** Concern scale. Glowing dots on Night only (face map, concern bars). */
 export const concernScale = {
-  Clear: '#CFE7E1',
-  Mild: '#F2D9A2',
-  Moderate: '#EFAA8F',
-  High: '#D9655A',
+  Clear: '#8C7BFF',
+  Mild: '#FFD66E',
+  Moderate: '#FF9563',
+  High: '#FF4F6D',
 } as const;
 
 export type ConcernLevel = keyof typeof concernScale;
 
-/** Fitzpatrick I to VI: brand mark, skin-tone picker and default avatars only. */
+/** Fitzpatrick I to VI: the logo, the skin-tone picker and default avatars only. Never status. */
 export const fitzpatrick = ['#F5DCCB', '#EBC2A2', '#D4A07A', '#A8714C', '#7A4B31', '#4A2E22'] as const;
+
+/** Dermatologist screens swap Lamp violet for Emerald everywhere. */
+export function withRole(c: ThemeColors, clinician: boolean): ThemeColors {
+  if (!clinician) return c;
+  return { ...c, brand: c.clinician, brandDeep: c.clinicianDeep, brandWash: c.clinicianWash, brandSoft: c.clinicianWash };
+}
 
 export function getColors(theme: ResolvedTheme): ThemeColors {
   return theme === 'dark' ? darkColors : lightColors;

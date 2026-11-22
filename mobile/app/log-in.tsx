@@ -1,41 +1,84 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert } from 'react-native';
+import { Pressable } from 'react-native';
 
-import { Button, Card, Field, Screen, TopBar, Txt } from '@/components/ui/kit';
-import { DEMO_DOCTOR_EMAIL, DEMO_PATIENT } from '@/data/seed';
-import { resetTo } from '@/lib/nav';
+import { Icon } from '@/components/ui/Icon';
+import { Button, Card, ErrorBanner, Field, Screen, TopBar, Txt } from '@/components/ui/kit';
+import { DEMO_ACCOUNTS } from '@/data/seed';
+import { errorMessage } from '@/lib/api';
+import { homeFor, resetTo } from '@/lib/nav';
 import { useActions } from '@/store/AppStore';
+import { useTheme } from '@/theme/ThemeProvider';
 
-/** Log in (linked from A2). There is no auth server yet, so this signs in to a demo account. */
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+/** Log in (linked from A2). */
 export default function LogIn() {
-  const { logIn } = useActions();
+  const { colors } = useTheme();
+  const { logIn, logOut } = useActions();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [show, setShow] = useState(false);
+  const [tried, setTried] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const submit = (e = email) => {
-    const role = logIn(e);
-    resetTo(role === 'dermatologist' ? '/today' : '/home');
+  const errors = {
+    email: !EMAIL.test(email.trim()) ? 'Enter the email you signed up with.' : null,
+    password: password.length === 0 ? 'Enter your password.' : null,
+  };
+
+  const submit = async (e = email, p = password) => {
+    setTried(true);
+    setError(null);
+    if (e === email && (errors.email || errors.password)) return;
+    setBusy(true);
+    try {
+      const s = await logIn(e.trim(), p);
+      if (s.session?.role === 'admin') {
+        await logOut();
+        setError('Admin accounts use the admin tools, not the app.');
+        return;
+      }
+      resetTo(homeFor(s));
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
-    <Screen keyboard header={<TopBar />} footer={<Button label="Log in" onPress={() => submit()} />}>
+    <Screen keyboard header={<TopBar />} footer={<Button label="Log in" loading={busy} onPress={() => void submit()} />}>
       <Txt variant="display">Welcome back</Txt>
-      <Field label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-      <Field label="Password" value={password} onChangeText={setPassword} secure autoCapitalize="none" />
-      <Txt
-        variant="smallStrong"
-        color="brand"
-        onPress={() => Alert.alert('Reset password', 'Password reset needs the auth service, which isn\'t connected yet.')}>
+      <ErrorBanner error={error} />
+      <Field label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" error={tried ? errors.email : null} />
+      <Field
+        label="Password"
+        value={password}
+        onChangeText={setPassword}
+        secure={!show}
+        autoCapitalize="none"
+        error={tried ? errors.password : null}
+        right={
+          <Pressable onPress={() => setShow((v) => !v)} accessibilityRole="button" accessibilityLabel={show ? 'Hide password' : 'Show password'} hitSlop={10}>
+            <Icon name={show ? 'visibility-off' : 'visibility'} size={20} color={colors.textMuted} />
+          </Pressable>
+        }
+      />
+      <Txt variant="smallStrong" color="brand" onPress={() => router.push({ pathname: '/forgot-password', params: { email: email.trim() } })}>
         Forgot password?
       </Txt>
-      <Card tone="muted">
-        <Txt variant="smallStrong">Demo accounts</Txt>
-        <Txt variant="small" color="secondary" style={{ marginTop: 4 }}>
-          Accounts aren&apos;t connected to a server yet. Tap one to explore with sample data.
-        </Txt>
-        <Button variant="secondary" compact label={`Patient · ${DEMO_PATIENT.email}`} style={{ marginTop: 12 }} onPress={() => submit(DEMO_PATIENT.email)} />
-        <Button variant="secondary" compact label={`Dermatologist · ${DEMO_DOCTOR_EMAIL}`} style={{ marginTop: 8 }} onPress={() => submit(DEMO_DOCTOR_EMAIL)} />
-      </Card>
+      {__DEV__ ? (
+        <Card tone="muted">
+          <Txt variant="smallStrong">Demo accounts</Txt>
+          <Txt variant="small" color="secondary" style={{ marginTop: 4 }}>
+            Seeded on the development server, password {DEMO_ACCOUNTS.password}.
+          </Txt>
+          <Button variant="secondary" compact label={`Patient · ${DEMO_ACCOUNTS.patient}`} style={{ marginTop: 12 }} disabled={busy} onPress={() => void submit(DEMO_ACCOUNTS.patient, DEMO_ACCOUNTS.password)} />
+          <Button variant="secondary" compact label={`Dermatologist · ${DEMO_ACCOUNTS.doctor}`} style={{ marginTop: 8 }} disabled={busy} onPress={() => void submit(DEMO_ACCOUNTS.doctor, DEMO_ACCOUNTS.password)} />
+        </Card>
+      ) : null}
     </Screen>
   );
 }

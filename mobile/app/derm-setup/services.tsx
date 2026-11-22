@@ -4,11 +4,13 @@ import { Switch, TextInput, View } from 'react-native';
 
 import { SetupHeader } from '@/components/SetupHeader';
 import { Icon } from '@/components/ui/Icon';
-import { Banner, Button, IconTile, List, Screen, Txt } from '@/components/ui/kit';
+import { Banner, Button, Card, ErrorBanner, IconTile, List, Screen, Txt } from '@/components/ui/kit';
+import { dayMonth } from '@/lib/format';
 import { SERVICE_META } from '@/data/seed';
 import type { ServiceType } from '@/data/types';
 import { back } from '@/lib/nav';
-import { useStore } from '@/store/AppStore';
+import { useSubmit } from '@/lib/useSubmit';
+import { useActions, useApp } from '@/store/AppStore';
 import type { DermProfile } from '@/store/state';
 import { useTheme } from '@/theme/ThemeProvider';
 import { radius, space, type } from '@/theme/tokens';
@@ -19,15 +21,22 @@ const DETAIL: Record<ServiceType, string> = { video: '20 min', clinic: '30 min',
 export default function Services() {
   const { colors } = useTheme();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
-  const { state, update } = useStore();
+  const state = useApp();
+  const { dermServices } = useActions();
+  const { busy, error, setError, run } = useSubmit();
   const [services, setServices] = useState<DermProfile['services']>(state.derm.services);
   const pending = state.derm.status !== 'approved';
 
   const set = (t: ServiceType, patch: Partial<{ on: boolean; fee: number }>) => setServices((s) => ({ ...s, [t]: { ...s[t], ...patch } }));
   const anyOn = Object.values(services).some((x) => x.on && x.fee > 0);
 
-  const save = () => {
-    update((s) => ({ ...s, derm: { ...s.derm, services, step: 'done', status: s.derm.status === 'draft' ? 'pending' : s.derm.status } }));
+  const save = async () => {
+    const bad = (Object.keys(services) as ServiceType[]).find((t) => services[t].on && (services[t].fee < 500 || services[t].fee > 50000));
+    if (bad) {
+      setError(`${SERVICE_META[bad].title}: fees must be between PKR 500 and 50,000.`);
+      return;
+    }
+    if (!(await run(() => dermServices(services)))) return;
     if (edit) back();
     else {
       router.replace('/today');
@@ -38,9 +47,41 @@ export default function Services() {
   return (
     <Screen
       keyboard
-      header={<SetupHeader step={3} tone="clinician" editing={!!edit} label={edit ? undefined : 'Step 3 of 3'} />}
-      footer={<Button label={edit ? 'Save' : 'Set my hours'} variant="clinician" disabled={!anyOn} onPress={save} />}>
-      <Txt variant="display">{edit ? 'Services and fees' : 'Set how patients can reach you'}</Txt>
+      header={<SetupHeader step={3} tone="clinician" editing={!!edit} />}
+      footer={<Button label={edit ? 'Save' : 'Submit and set my hours'} variant="clinician" disabled={!anyOn} loading={busy} onPress={() => void save()} />}>
+      {pending && state.derm.status !== 'draft' ? (
+        <Card tone="clinician">
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+            <Icon name="hourglass-top" size={20} color={colors.clinicianDeep} />
+            <Txt variant="bodyStrong" style={{ flex: 1 }}>
+              {state.derm.status === 'rejected' ? 'Needs changes' : 'Under review'}
+            </Txt>
+            {state.derm.submittedAt ? (
+              <Txt variant="caption" color="muted">
+                Sent {dayMonth(state.derm.submittedAt)}
+              </Txt>
+            ) : null}
+          </View>
+          <View style={{ gap: 6, marginTop: space.md }}>
+            {[
+              { label: 'Details submitted', state: 'done' },
+              { label: 'PMDC check', state: state.derm.status === 'rejected' ? 'failed' : 'now' },
+              { label: 'Profile goes live', state: 'later' },
+            ].map((x) => (
+              <View key={x.label} style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, opacity: x.state === 'later' ? 0.5 : 1 }}>
+                <Icon
+                  name={x.state === 'done' ? 'check-circle' : x.state === 'now' ? 'autorenew' : x.state === 'failed' ? 'error' : 'radio-button-unchecked'}
+                  size={17}
+                  color={x.state === 'failed' ? colors.actIcon : colors.clinician}
+                />
+                <Txt variant={x.state === 'now' ? 'bodyStrong' : 'body'}>{x.label}</Txt>
+              </View>
+            ))}
+          </View>
+        </Card>
+      ) : null}
+      <Txt variant="display">{edit ? 'Services and fees' : 'Your services'}</Txt>
+      <ErrorBanner error={error} />
       <List>
         {(Object.keys(SERVICE_META) as ServiceType[]).map((t) => (
           <View key={t} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg, opacity: services[t].on ? 1 : 0.55 }}>

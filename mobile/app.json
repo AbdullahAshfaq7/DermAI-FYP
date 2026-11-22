@@ -15,7 +15,7 @@
       "package": "com.dermai.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/branding/adaptive-icon-foreground-square.png",
-        "backgroundColor": "#0E2A33"
+        "backgroundColor": "#150E26"
       },
       "predictiveBackGestureEnabled": false
     },
@@ -30,9 +30,9 @@
         {
           "image": "./assets/Splash-screen.png",
           "resizeMode": "cover",
-          "backgroundColor": "#0E2A33",
+          "backgroundColor": "#150E26",
           "dark": {
-            "backgroundColor": "#0E2A33"
+            "backgroundColor": "#150E26"
           }
         }
       ],
@@ -58,7 +58,10 @@
         {
           "calendarPermission": "DermAI adds your dermatologist visits to your calendar when you ask it to."
         }
-      ]
+      ],
+      "expo-secure-store",
+      "expo-sharing",
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true,

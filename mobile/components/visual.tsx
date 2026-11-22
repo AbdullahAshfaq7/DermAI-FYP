@@ -1,8 +1,8 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
-import Svg, { Circle, ClipPath, Defs, Ellipse, G, Line, Path, Polyline, Rect } from 'react-native-svg';
+import Svg, { Circle, Ellipse, G, Line, Path, Polyline } from 'react-native-svg';
 
 import { Icon } from '@/components/ui/Icon';
 import { Txt } from '@/components/ui/kit';
@@ -10,116 +10,175 @@ import { CONCERNS, ZONE_LABEL } from '@/data/seed';
 import type { ConcernKey, ConcernLevel, ConcernReading, ZoneKey } from '@/data/types';
 import { concernScale, fitzpatrick } from '@/theme/colors';
 import { useTheme } from '@/theme/ThemeProvider';
-import { radius, space, type } from '@/theme/tokens';
+import { fonts, radius, space, type } from '@/theme/tokens';
 
-/* ───────────── Logo: lens of six Fitzpatrick bands inside an open teal ring ───────────── */
+/* ───────────── Logo: a camera aperture of the six Fitzpatrick tones around a violet lens ───────────── */
 
-export function LogoMark({ size = 40, ring }: { size?: number; ring?: string }) {
-  const { colors } = useTheme();
-  const r = 14;
+const BLADE = 'M13.67 4.58A22 22 0 0 1 34.33 4.58L30.69 17.98A9 9 0 0 0 22.75 15.09Z';
+
+export function LogoMark({ size = 40 }: { size?: number; ring?: string }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 40 40" accessibilityLabel="DermAI">
-      <Defs>
-        <ClipPath id="lens">
-          <Circle cx="20" cy="20" r={r} />
-        </ClipPath>
-      </Defs>
-      <G clipPath="url(#lens)">
-        {fitzpatrick.map((c, i) => (
-          <Rect key={c} x={6 + (i * 28) / 6} y="4" width={28 / 6 + 0.3} height="32" fill={c} />
-        ))}
-      </G>
-      <Path d="M 33.5 13 A 16 16 0 1 1 27 5.4" stroke={ring ?? colors.brand} strokeWidth="2.6" fill="none" strokeLinecap="round" />
+    <Svg width={size} height={size} viewBox="0 0 48 48" accessibilityLabel="DermAI">
+      {fitzpatrick.map((c, i) => (
+        <Path key={c} d={BLADE} fill={c} transform={i ? `rotate(${i * 60} 24 24)` : undefined} />
+      ))}
+      <Circle cx="24" cy="24" r="5.2" fill="#7B63FF" />
+      <Circle cx="24" cy="24" r="2.2" fill="#E9E4FF" />
     </Svg>
   );
 }
 
 export function Wordmark({ size = 28, color }: { size?: number; color?: string }) {
   const { colors } = useTheme();
-  return <Text style={{ fontFamily: 'Sora_600SemiBold', fontSize: size, letterSpacing: -size * 0.02, color: color ?? colors.textPrimary }}>dermai</Text>;
+  return <Text style={{ fontFamily: fonts.display700, fontSize: size, letterSpacing: -size * 0.035, color: color ?? colors.textPrimary }}>dermai</Text>;
 }
 
-/* ───────────── Face map ───────────── */
+/* ───────────── Face map: a glowing dot face; zones swell and warm up as a concern grows ───────────── */
 
 const ZONE_ORDER: ZoneKey[] = ['forehead', 'nose', 'leftCheek', 'rightCheek', 'chin'];
+const LEVEL_N: Record<ConcernLevel, number> = { Clear: 0, Mild: 1, Moderate: 2, High: 3 };
+/** Zone centre and spread in face units (-1..1). */
+const ZONE_C: Record<ZoneKey, [number, number, number, number]> = {
+  forehead: [0, -0.62, 0.55, 0.26],
+  nose: [0, 0.1, 0.15, 0.3],
+  leftCheek: [-0.52, 0.22, 0.28, 0.3],
+  rightCheek: [0.52, 0.22, 0.28, 0.3],
+  chin: [0, 0.8, 0.32, 0.2],
+};
+const hash = (x: number, y: number) => {
+  const v = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+  return v - Math.floor(v);
+};
+const halfW = (ny: number) => {
+  if (Math.abs(ny) >= 1) return 0;
+  let w = Math.sqrt(1 - ny * ny);
+  if (ny > 0.12) w *= 1 - 0.42 * (ny - 0.12);
+  return w;
+};
+const hole = (nx: number, ny: number) => {
+  const e = (x0: number, y0: number, a: number, b: number) => ((nx - x0) / a) ** 2 + ((ny - y0) / b) ** 2 < 1;
+  return e(-0.4, -0.16, 0.19, 0.075) || e(0.4, -0.16, 0.19, 0.075) || e(0, 0.5, 0.27, 0.06);
+};
+
+type Dot = { x: number; y: number; r: number; color: string; a: number; glow: number };
+
+function faceDots(w: number, h: number, zones: Record<ZoneKey, ConcernLevel> | null, density: number): Dot[] {
+  let fh = h * 0.86;
+  let fw = fh * 0.74;
+  if (fw > w * 0.86) {
+    fw = w * 0.86;
+    fh = fw / 0.74;
+  }
+  const cx = w / 2;
+  const cy = h / 2;
+  const s = fw / density;
+  const out: Dot[] = [];
+  for (let y = cy - fh / 2 + s / 2; y < cy + fh / 2; y += s) {
+    for (let x = cx - fw / 2 + s / 2; x < cx + fw / 2; x += s) {
+      const nx = (x - cx) / (fw / 2);
+      const ny = (y - cy) / (fh / 2);
+      const hw = halfW(ny);
+      if (Math.abs(nx) > hw || hole(nx, ny)) continue;
+      const edge = Math.min(1, (1 - Math.abs(nx) / hw) * 4);
+      const hv = hash(x, y);
+      let color = '#C4B8FF';
+      let rad = s * (0.17 + 0.07 * hv);
+      let al = 0.5;
+      let glow = 0;
+      if (zones) {
+        let best = 0;
+        let L = -1;
+        for (const z of ZONE_ORDER) {
+          const [zx, zy, sx, sy] = ZONE_C[z];
+          const lv = LEVEL_N[zones[z]];
+          const wgt = Math.exp(-(((nx - zx) / sx) ** 2 + ((ny - zy) / sy) ** 2));
+          const sc = wgt * (0.6 + (0.4 * lv) / 3);
+          if (sc > best) {
+            best = sc;
+            L = lv;
+          }
+        }
+        const wgt = best / (0.6 + (0.4 * Math.max(0, L)) / 3);
+        if (L >= 0 && wgt > 0.18) {
+          const k = Math.min(1, (wgt - 0.18) / 0.6);
+          color = concernScale[(Object.keys(LEVEL_N) as ConcernLevel[])[L]];
+          rad = s * (0.18 + (0.16 + 0.06 * L) * k + 0.05 * hv);
+          al = 0.6 + 0.4 * k;
+          glow = L > 0 ? (3 + 2 * L) * k : 2;
+        }
+      }
+      out.push({ x, y, r: Math.max(0.6, rad), color, a: Math.min(1, al * (0.55 + 0.45 * edge)), glow });
+    }
+  }
+  return out;
+}
 
 export function FaceMap({
   zones,
   width = 160,
+  height: heightProp,
   onZonePress,
   selected,
-  animate,
   concernLabel,
+  density = 24,
 }: {
   zones: Record<ZoneKey, ConcernLevel> | null;
   width?: number;
+  height?: number;
   onZonePress?: (zone: ZoneKey) => void;
   selected?: ZoneKey | null;
   animate?: boolean;
   concernLabel?: string;
+  /** Dots across the face; fewer for small maps. */
+  density?: number;
 }) {
-  const { colors, isDark } = useTheme();
-  const [shown, setShown] = useState(animate ? 0 : 5);
-
-  useEffect(() => {
-    if (!animate) return;
-    let cancelled = false;
-    AccessibilityInfo.isReduceMotionEnabled().then((reduce) => {
-      if (cancelled) return;
-      if (reduce) return setShown(5);
-      let n = 0;
-      const t = setInterval(() => {
-        n += 1;
-        setShown(n);
-        if (n >= 5) clearInterval(t);
-      }, 80);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [animate]);
-
-  const skin = isDark ? '#3A2C27' : '#F6E7E0';
-  const outline = isDark ? '#6B544B' : '#DCC6BC';
-  const feature = isDark ? '#C9B3A8' : '#5A4038';
-  const fill = (z: ZoneKey) => {
-    if (!zones || ZONE_ORDER.indexOf(z) >= shown) return skin;
-    return concernScale[zones[z]];
-  };
-  const stroke = (z: ZoneKey) => (selected === z ? colors.brand : 'transparent');
-  const press = (z: ZoneKey) => (onZonePress ? () => onZonePress(z) : undefined);
-  const height = (width * 200) / 160;
-
+  const height = heightProp ?? (width * 200) / 160;
+  const dots = useMemo(() => faceDots(width, height, zones, density), [width, height, zones, density]);
+  // Face box, to place tap targets over each zone.
+  let fh = height * 0.86;
+  let fw = fh * 0.74;
+  if (fw > width * 0.86) {
+    fw = width * 0.86;
+    fh = fw / 0.74;
+  }
   return (
     <View style={{ width, height }}>
-      <Svg width={width} height={height} viewBox="0 0 160 200">
-        <Ellipse cx="80" cy="100" rx="72" ry="94" fill={skin} stroke={outline} strokeWidth="1.5" />
-        <Path d="M28 56 Q80 18 132 56 L124 76 Q80 50 36 76 Z" fill={fill('forehead')} stroke={stroke('forehead')} strokeWidth="2.5" onPress={press('forehead')} />
-        <Path d="M68 80 L92 80 L98 122 Q80 130 62 122 Z" fill={fill('nose')} stroke={stroke('nose')} strokeWidth="2.5" onPress={press('nose')} />
-        <Circle cx="38" cy="116" r="22" fill={fill('leftCheek')} stroke={stroke('leftCheek')} strokeWidth="2.5" onPress={press('leftCheek')} />
-        <Circle cx="122" cy="116" r="22" fill={fill('rightCheek')} stroke={stroke('rightCheek')} strokeWidth="2.5" onPress={press('rightCheek')} />
-        <Ellipse cx="80" cy="170" rx="26" ry="13" fill={fill('chin')} stroke={stroke('chin')} strokeWidth="2.5" onPress={press('chin')} />
-        <Path d="M42 84 Q54 78 64 84 M96 84 Q106 78 118 84" stroke={feature} strokeWidth="1.6" fill="none" strokeLinecap="round" />
-        <Path d="M64 146 Q80 156 96 146" stroke={feature} strokeWidth="1.6" fill="none" strokeLinecap="round" />
-        {zones && shown >= 5
-          ? ZONE_ORDER.filter((z) => zones[z] === 'Moderate' || zones[z] === 'High').map((z) => {
-              const pos = { forehead: [80, 46], nose: [80, 102], leftCheek: [34, 116], rightCheek: [126, 116], chin: [80, 170] }[z];
-              return <Circle key={z} cx={pos[0]} cy={pos[1]} r="2.8" fill={feature} />;
-            })
-          : null}
+      <Svg width={width} height={height}>
+        {dots.map((d, i) =>
+          d.glow ? (
+            <G key={i}>
+              <Circle cx={d.x} cy={d.y} r={d.r + d.glow * 0.6} fill={d.color} opacity={d.a * 0.25} />
+              <Circle cx={d.x} cy={d.y} r={d.r} fill={d.color} opacity={d.a} />
+            </G>
+          ) : (
+            <Circle key={i} cx={d.x} cy={d.y} r={d.r} fill={d.color} opacity={d.a} />
+          ),
+        )}
+        {selected ? (
+          <Ellipse
+            cx={width / 2 + (ZONE_C[selected][0] * fw) / 2}
+            cy={height / 2 + (ZONE_C[selected][1] * fh) / 2}
+            rx={(ZONE_C[selected][2] * fw) / 2 + 6}
+            ry={(ZONE_C[selected][3] * fh) / 2 + 6}
+            stroke="#EEE9FF"
+            strokeWidth={1.5}
+            strokeDasharray="4 4"
+            fill="none"
+          />
+        ) : null}
       </Svg>
-      {/* Accessible, tappable targets that mirror the zones for screen readers. */}
       {zones && onZonePress
         ? ZONE_ORDER.map((z) => {
-            const box = { forehead: [30, 24, 100, 46], nose: [62, 80, 36, 50], leftCheek: [16, 94, 44, 44], rightCheek: [100, 94, 44, 44], chin: [54, 157, 52, 26] }[z];
-            const k = width / 160;
+            const [zx, zy, sx, sy] = ZONE_C[z];
+            const bw = Math.max(36, sx * fw);
+            const bh = Math.max(32, sy * fh);
             return (
               <Pressable
                 key={z}
                 onPress={() => onZonePress(z)}
                 accessibilityRole="button"
                 accessibilityLabel={`${ZONE_LABEL[z][0].toUpperCase()}${ZONE_LABEL[z].slice(1)}, ${concernLabel ? `${concernLabel} ` : ''}${zones[z].toLowerCase()}`}
-                style={{ position: 'absolute', left: box[0] * k, top: box[1] * k, width: box[2] * k, height: box[3] * k }}
+                style={{ position: 'absolute', left: width / 2 + (zx * fw) / 2 - bw / 2, top: height / 2 + (zy * fh) / 2 - bh / 2, width: bw, height: bh }}
               />
             );
           })
@@ -128,18 +187,27 @@ export function FaceMap({
   );
 }
 
-/** A soft teal line that sweeps over the face map while the scan is analysed. */
+/** A small label pinned on the night map: "T-zone, moderate". */
+export function MapTag({ label, level, style }: { label: string; level: ConcernLevel; style?: StyleProp<ViewStyle> }) {
+  return (
+    <View style={[{ position: 'absolute', flexDirection: 'row', alignItems: 'center', gap: 5, height: 24, paddingLeft: 7, paddingRight: 9, borderRadius: 99, backgroundColor: 'rgba(45,35,80,0.92)' }, style]}>
+      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: concernScale[level] }} />
+      <Text style={[type.caption, { color: '#EEE9FF', fontSize: 11 }]}>{label}</Text>
+    </View>
+  );
+}
+
+/** A glowing violet line that sweeps the face while the scan is analysed. */
 export function ScanSweep({ height, width }: { height: number; width: number }) {
-  const { colors } = useTheme();
-  const [y] = useState(() => new Animated.Value(0));
+  const [y] = useState(() => new Animated.Value(height * 0.08));
   useEffect(() => {
     let loop: Animated.CompositeAnimation | null = null;
     AccessibilityInfo.isReduceMotionEnabled().then((reduce) => {
       if (reduce) return;
       loop = Animated.loop(
         Animated.sequence([
-          Animated.timing(y, { toValue: height - 6, duration: 1400, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-          Animated.timing(y, { toValue: 0, duration: 1400, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+          Animated.timing(y, { toValue: height * 0.9, duration: 1300, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+          Animated.timing(y, { toValue: height * 0.08, duration: 1300, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
         ]),
       );
       loop.start();
@@ -147,10 +215,10 @@ export function ScanSweep({ height, width }: { height: number; width: number }) 
     return () => loop?.stop();
   }, [height, y]);
   return (
-    <Animated.View
-      pointerEvents="none"
-      style={{ position: 'absolute', left: 0, width, height: 4, borderRadius: 2, backgroundColor: colors.brand, opacity: 0.7, transform: [{ translateY: y }] }}
-    />
+    <Animated.View pointerEvents="none" style={{ position: 'absolute', left: width * 0.1, width: width * 0.8, top: -24, height: 26, transform: [{ translateY: y }] }}>
+      <LinearGradient colors={['rgba(140,123,255,0)', 'rgba(140,123,255,0.32)']} style={{ flex: 1 }} />
+      <View style={{ height: 2, borderRadius: 1, backgroundColor: '#DCD4FF', boxShadow: '0 0 10px #8C7BFF' } as ViewStyle} />
+    </Animated.View>
   );
 }
 
@@ -174,10 +242,16 @@ export function LevelLegend({ compact }: { compact?: boolean }) {
 export function ConcernBar({ reading }: { reading: ConcernReading }) {
   const { colors } = useTheme();
   return (
-    <View style={{ height: 5, borderRadius: 3, backgroundColor: colors.surfaceMuted, overflow: 'hidden' }}>
-      <View style={{ width: `${reading.pct}%`, height: '100%', borderRadius: 3, backgroundColor: concernScale[reading.level] }} />
+    <View style={{ height: 6, borderRadius: 9, backgroundColor: colors.surfaceMuted, overflow: 'hidden' }}>
+      <View style={{ width: `${reading.pct}%`, height: '100%', borderRadius: 9, backgroundColor: concernScale[reading.level] }} />
     </View>
   );
+}
+
+/** A glowing dot in the concern colour (Night screens). */
+export function LevelDot({ level, size = 9 }: { level: ConcernLevel; size?: number }) {
+  const c = concernScale[level];
+  return <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: c, boxShadow: `0 0 8px ${c}` } as ViewStyle} />;
 }
 
 export function concernIcon(key: ConcernKey) {
@@ -216,9 +290,18 @@ export function TrendLine({
     <View style={{ height }} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
       {w > 0 ? (
         <Svg width={w} height={height}>
+          {pts.length > 1 ? (
+            <Path d={`M${pts[0][0]} ${height - 2} ${pts.map((p) => `L${p[0]} ${p[1]}`).join(' ')} L${pts[pts.length - 1][0]} ${height - 2} Z`} fill={colors.brandWash} />
+          ) : null}
           <Line x1="0" y1={height - 1} x2={w} y2={height - 1} stroke={colors.hairline} strokeWidth="1" />
           <Polyline points={pts.map((p) => p.join(',')).join(' ')} fill="none" stroke={c} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-          {pts.map((p, i) => (dots === 'all' || i === pts.length - 1 ? <Circle key={i} cx={p[0]} cy={p[1]} r="4" fill={c} /> : null))}
+          {pts.map((p, i) =>
+            i === pts.length - 1 ? (
+              <Circle key={i} cx={p[0]} cy={p[1]} r="4.5" fill={c} />
+            ) : dots === 'all' ? (
+              <Circle key={i} cx={p[0]} cy={p[1]} r="3" fill={colors.surface} stroke={c} strokeWidth="2" />
+            ) : null,
+          )}
         </Svg>
       ) : null}
     </View>
@@ -234,7 +317,7 @@ export function ScanPhoto({
   label,
   style,
 }: {
-  uri?: string;
+  uri?: string | null;
   tone: number;
   label?: string;
   style?: StyleProp<ViewStyle>;
@@ -249,7 +332,7 @@ export function ScanPhoto({
         <LinearGradient colors={[base, deeper]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: '100%', height: '100%' }} />
       )}
       {label ? (
-        <View style={{ position: 'absolute', left: 8, bottom: 8, backgroundColor: 'rgba(14,42,51,0.65)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+        <View style={{ position: 'absolute', left: 8, bottom: 8, backgroundColor: 'rgba(45,35,80,0.9)', borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3 }}>
           <Text style={[type.caption, { color: '#FFFFFF' }]}>{label}</Text>
         </View>
       ) : null}
@@ -263,11 +346,10 @@ export function PhotoCompare({
   after,
   height = 180,
 }: {
-  before: { uri?: string; tone: number; label: string };
-  after: { uri?: string; tone: number; label: string };
+  before: { uri?: string | null; tone: number; label: string };
+  after: { uri?: string | null; tone: number; label: string };
   height?: number;
 }) {
-  const { colors } = useTheme();
   const [w, setW] = useState(0);
   const [split, setSplit] = useState(0.5);
   const x = w * split;
@@ -291,13 +373,13 @@ export function PhotoCompare({
         <ScanPhoto uri={before.uri} tone={before.tone} style={{ width: w, height, borderRadius: 0 }} />
         </View>
         <View style={{ position: 'absolute', left: x - 1, top: 0, bottom: 0, width: 2, backgroundColor: '#FFFFFF' }} />
-        <View style={{ position: 'absolute', left: x - 16, top: height / 2 - 16, width: 32, height: 32, borderRadius: 16, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}>
-        <Icon name="code" size={18} color={colors.textPrimary} />
+        <View style={{ position: 'absolute', left: x - 16, top: height / 2 - 16, width: 32, height: 32, borderRadius: 16, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name="code" size={18} color="#21143A" />
         </View>
-        <View style={{ position: 'absolute', left: 8, bottom: 8, backgroundColor: 'rgba(14,42,51,0.65)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+        <View style={{ position: 'absolute', left: 8, bottom: 8, backgroundColor: 'rgba(45,35,80,0.9)', borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3 }}>
         <Text style={[type.caption, { color: '#FFFFFF' }]}>{before.label}</Text>
         </View>
-        <View style={{ position: 'absolute', right: 8, bottom: 8, backgroundColor: 'rgba(14,42,51,0.65)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+        <View style={{ position: 'absolute', right: 8, bottom: 8, backgroundColor: 'rgba(45,35,80,0.9)', borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3 }}>
         <Text style={[type.caption, { color: '#FFFFFF' }]}>{after.label}</Text>
         </View>
       </View>

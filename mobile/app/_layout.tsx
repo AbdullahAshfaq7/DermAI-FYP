@@ -1,15 +1,18 @@
-import { DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold } from '@expo-google-fonts/dm-sans';
-import { Sora_500Medium, Sora_600SemiBold } from '@expo-google-fonts/sora';
+import { BricolageGrotesque_600SemiBold, BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold } from '@expo-google-fonts/bricolage-grotesque';
+import { InstrumentSans_400Regular, InstrumentSans_500Medium, InstrumentSans_600SemiBold } from '@expo-google-fonts/instrument-sans';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from 'expo-router/react-navigation';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
+import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { AppStoreProvider } from '@/store/AppStore';
-import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
+import '@/lib/webAlert';
+import { AppStoreProvider, useStore } from '@/store/AppStore';
+import { nightColors } from '@/theme/colors';
+import { RoleTheme, ThemeProvider, useTheme } from '@/theme/ThemeProvider';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -17,6 +20,9 @@ export const unstable_settings = { anchor: 'index' };
 
 function Navigator() {
   const { isDark, colors } = useTheme();
+  // Screens read the session when they mount (forms copy it into local state), so wait until it is restored.
+  const { ready } = useStore();
+  if (!ready) return <View style={{ flex: 1, backgroundColor: nightColors.bg }} />;
   const base = isDark ? DarkTheme : DefaultTheme;
   return (
     <NavigationThemeProvider
@@ -33,13 +39,23 @@ function Navigator() {
   );
 }
 
+function Themed() {
+  const { state } = useStore();
+  return (
+    <RoleTheme clinician={state.session?.role === 'dermatologist'}>
+      <Navigator />
+    </RoleTheme>
+  );
+}
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
-    Sora_500Medium,
-    Sora_600SemiBold,
-    DMSans_400Regular,
-    DMSans_500Medium,
-    DMSans_600SemiBold,
+    BricolageGrotesque_600SemiBold,
+    BricolageGrotesque_700Bold,
+    BricolageGrotesque_800ExtraBold,
+    InstrumentSans_400Regular,
+    InstrumentSans_500Medium,
+    InstrumentSans_600SemiBold,
   });
   const fontsReady = fontsLoaded || !!fontError;
 
@@ -53,7 +69,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ThemeProvider>
         <AppStoreProvider>
-          <Navigator />
+          <Themed />
         </AppStoreProvider>
       </ThemeProvider>
     </SafeAreaProvider>

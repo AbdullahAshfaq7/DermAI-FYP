@@ -15,11 +15,11 @@ export default function DermTabs() {
           {...props}
           role="dermatologist"
           tabs={[
-            { name: 'today', label: 'Today', icon: 'today' },
-            { name: 'cases', label: 'Cases', icon: 'folder-shared', badge: waiting },
+            { name: 'today', label: 'Today', icon: 'wb-sunny' },
+            { name: 'cases', label: 'Cases', icon: 'inbox', badge: waiting },
             { name: 'schedule', label: 'Schedule', icon: 'calendar-month' },
-            { name: 'messages', label: 'Messages', icon: 'chat', badge: unread },
-            { name: 'account', label: 'Me', icon: 'person' },
+            { name: 'messages', label: 'Messages', icon: 'chat-bubble-outline', iconOn: 'chat-bubble', badge: unread },
+            { name: 'account', label: 'Me', icon: 'person-outline', iconOn: 'person' },
           ]}
         />
       )}>

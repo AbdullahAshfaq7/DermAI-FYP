@@ -2,12 +2,21 @@ import { useEffect, useState } from 'react';
 import { AccessibilityInfo } from 'react-native';
 
 import { CONCERNS, ROUTINE_LIBRARY, ZONE_LABEL } from '@/data/seed';
-import type { ConcernKey, ConcernLevel, Scan, ZoneKey } from '@/data/types';
+import type { ConcernKey, ConcernLevel, Doctor, Scan, ZoneKey } from '@/data/types';
 import { dayMonth, todayKey } from '@/lib/format';
 import { buildRoutine } from '@/lib/routine';
 import type { AppState } from '@/store/state';
 
 export { todayKey };
+
+export function doctorById(s: AppState, id: string | null | undefined): Doctor | undefined {
+  return id ? s.doctors.find((d) => d.id === id) : undefined;
+}
+
+/** A doctor's display name even when they are no longer listed (e.g. left DermAI). */
+export function doctorName(s: AppState, id: string | null | undefined, fallback = 'Your doctor'): string {
+  return doctorById(s, id)?.name ?? fallback;
+}
 
 export function scanById(s: AppState, id: string | undefined): Scan | undefined {
   return s.scans.find((x) => x.id === id);
@@ -65,7 +74,7 @@ export function trendWord(values: number[]): string {
 }
 
 export function routineProgress(s: AppState, period: 'am' | 'pm') {
-  const steps = buildRoutine(period, s.profile, s.routinePrefs);
+  const steps = buildRoutine(period, s.profile, s.routinePrefs, s.scans[0]);
   const done = (s.routineLog[todayKey()] ?? []).filter((id) => steps.some((x) => x.id === id));
   return { steps, done: done.length, total: steps.length };
 }
@@ -97,10 +106,7 @@ export function stepById(id: string) {
 export function useCountUp(target: number, run: boolean, ms = 700): number {
   const [v, setV] = useState(run ? 0 : target);
   useEffect(() => {
-    if (!run) {
-      setV(target);
-      return;
-    }
+    if (!run) return;
     let raf = 0;
     let cancelled = false;
     AccessibilityInfo.isReduceMotionEnabled().then((reduce) => {
@@ -119,5 +125,60 @@ export function useCountUp(target: number, run: boolean, ms = 700): number {
       cancelAnimationFrame(raf);
     };
   }, [target, run, ms]);
-  return v;
+  return run ? v : target;
+}
+
+
+const ZONE_NAME: Record<ZoneKey, string> = { forehead: 'Forehead', nose: 'T-zone', leftCheek: 'Left cheek', rightCheek: 'Right cheek', chin: 'Chin' };
+const RANK_L: Record<ConcernLevel, number> = { Clear: 0, Mild: 1, Moderate: 2, High: 3 };
+
+/** Short zone name for map tags and summaries ("T-zone", "Chin"). */
+export function zoneName(z: ZoneKey): string {
+  return ZONE_NAME[z];
+}
+
+/** One line before the map: "Chin and T-zone need the most care. Cheeks are calmer." */
+export function summaryLine(scan: Scan): string {
+  const zones = (Object.keys(scan.zones) as ZoneKey[]).sort((a, b) => RANK_L[scan.zones[b]] - RANK_L[scan.zones[a]]);
+  const top = RANK_L[scan.zones[zones[0]]];
+  if (top === 0) return 'Every zone reads clear. Keep doing what you are doing.';
+  const worst = zones.filter((z) => RANK_L[scan.zones[z]] === top).map((z) => ZONE_NAME[z]);
+  const calm = zones.filter((z) => RANK_L[scan.zones[z]] === 0);
+  const join = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1].toLowerCase()}` : xs[0]);
+  const cheeks = calm.includes('leftCheek') && calm.includes('rightCheek');
+  const calmNames = cheeks ? ['Cheeks', ...calm.filter((z) => z !== 'leftCheek' && z !== 'rightCheek').map((z) => ZONE_NAME[z].toLowerCase())] : calm.map((z) => ZONE_NAME[z]);
+  const first = `${join(worst)} ${worst.length > 1 ? 'need' : 'needs'} the most care.`;
+  if (!calmNames.length) return first;
+  return `${first} ${join(calmNames)} ${calmNames.length > 1 || cheeks ? 'are' : 'is'} calmer.`;
+}
+
+/** The photo for a scan: the phone's copy first (phone-first), else a shared server copy. */
+export function photoFor(scan: Scan, local: Record<string, { uri: string }>): string | null {
+  return local[scan.id]?.uri ?? scan.photoUri ?? null;
+}
+
+/** "Today, 6:00 pm", "Tomorrow, 10:30 am", "Mon 23 Nov, 4:30 pm" */
+export function slotLabel(iso: string, now = new Date()): string {
+  const d = new Date(iso);
+  const days = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) / 86400000);
+  const t = `${d.getHours() % 12 === 0 ? 12 : d.getHours() % 12}:${String(d.getMinutes()).padStart(2, '0')} ${d.getHours() < 12 ? 'am' : 'pm'}`;
+  if (days === 0) return `Today, ${t}`;
+  if (days === 1) return `Tomorrow, ${t}`;
+  return `${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()]} ${dayMonth(iso)}, ${t}`;
+}
+
+
+/** This week, Monday first: which days had the full morning routine done (the streak strip on D2). */
+export function weekStrip(s: AppState, now = new Date()): { key: string; letter: string; done: boolean; today: boolean; future: boolean }[] {
+  const am = buildRoutine('am', s.profile, s.routinePrefs, s.scans[0]).map((x) => x.id);
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  const today = todayKey(now);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const key = todayKey(d);
+    const log = s.routineLog[key] ?? [];
+    return { key, letter: 'MTWTFSS'[i], done: am.length > 0 && am.every((id) => log.includes(id)), today: key === today, future: key > today };
+  });
 }

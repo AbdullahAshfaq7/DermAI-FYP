@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useColorScheme } from 'react-native';
 
-import { getColors, type ResolvedTheme, type ThemeColors, type ThemePreference } from '@/theme/colors';
+import { getColors, nightColors, withRole, type ResolvedTheme, type ThemeColors, type ThemePreference } from '@/theme/colors';
 
 const STORAGE_KEY = 'dermai-theme-preference';
 
@@ -67,4 +67,30 @@ export function makeStyles<T>(factory: (c: ThemeColors, isDark: boolean) => T) {
     const { colors, isDark } = useTheme();
     return useMemo(() => factory(colors, isDark), [colors, isDark]);
   };
+}
+
+/** Re-provides the theme with different colours for a subtree (role accent, Night). */
+function Override({ children, map, dark }: { children: ReactNode; map: (c: ThemeColors) => ThemeColors; dark?: boolean }) {
+  const parent = useTheme();
+  const colors = useMemo(() => map(parent.colors), [map, parent.colors]);
+  const value = useMemo(() => ({ ...parent, colors, isDark: dark ?? parent.isDark }), [parent, colors, dark]);
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+}
+
+/** Dermatologists see Emerald wherever patients see Lamp violet. */
+export function RoleTheme({ clinician, children }: { clinician: boolean; children: ReactNode }) {
+  const map = useCallback((c: ThemeColors) => withRole(c, clinician), [clinician]);
+  return <Override map={map}>{children}</Override>;
+}
+
+const toNight = () => nightColors;
+
+/** The scan flow (camera, analysis, results) runs on Night whatever the app theme. */
+export function NightTheme({ children }: { children: ReactNode }) {
+  return (
+    <Override map={toNight} dark>
+      <StatusBar style="light" />
+      {children}
+    </Override>
+  );
 }

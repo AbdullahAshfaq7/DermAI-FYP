@@ -5,7 +5,7 @@ import { View } from 'react-native';
 import { Icon } from '@/components/ui/Icon';
 import { Avatar, EmptyState, Field, List, Row, Screen, Txt } from '@/components/ui/kit';
 import { shortPatient } from '@/components/derm';
-import { relativeStamp } from '@/lib/format';
+import { relativeStamp, hrs } from '@/lib/format';
 import { useApp } from '@/store/AppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { space } from '@/theme/tokens';
@@ -20,7 +20,7 @@ export default function Messages() {
     .sort((a, b) => (b.messages.at(-1)?.at ?? '').localeCompare(a.messages.at(-1)?.at ?? ''));
 
   return (
-    <Screen>
+    <Screen dock>
       <Txt variant="title" style={{ marginTop: space.sm }}>
         Messages
       </Txt>
@@ -60,7 +60,7 @@ export default function Messages() {
       <View style={{ flexDirection: 'row', gap: space.sm }}>
         <Icon name="schedule" size={18} color={colors.textMuted} />
         <Txt variant="small" color="secondary" style={{ flex: 1 }}>
-          Patients see &quot;Usually replies in 2 hrs&quot;. Set your hours in Me.
+          {s.derm.stats?.replyHours ? `Patients see "Usually replies in ${hrs(s.derm.stats.replyHours)}", based on your recent replies.` : 'Patients see how quickly you usually reply, based on your recent replies.'}
         </Txt>
       </View>
     </Screen>

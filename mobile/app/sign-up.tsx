@@ -3,12 +3,13 @@ import { useState } from 'react';
 import { Alert, Pressable, View } from 'react-native';
 
 import { Icon } from '@/components/ui/Icon';
-import { Button, Field, Screen, TopBar, Txt } from '@/components/ui/kit';
+import { Button, ErrorBanner, Field, Screen, TopBar, Txt } from '@/components/ui/kit';
+import { errorMessage } from '@/lib/api';
 import { useActions } from '@/store/AppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { space } from '@/theme/tokens';
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 /** A4 Create account */
 export default function SignUp() {
@@ -19,6 +20,8 @@ export default function SignUp() {
   const [password, setPassword] = useState('');
   const [show, setShow] = useState(false);
   const [tried, setTried] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const errors = {
     name: name.trim().length < 2 ? 'Enter your full name.' : null,
@@ -27,25 +30,39 @@ export default function SignUp() {
   };
   const valid = !errors.name && !errors.email && !errors.password;
 
-  const submit = () => {
+  const submit = async () => {
     setTried(true);
+    setError(null);
     if (!valid) return;
-    signUp(name.trim(), email.trim().toLowerCase());
-    router.push('/consent');
+    setBusy(true);
+    try {
+      await signUp(name.trim(), email.trim().toLowerCase(), password);
+      router.replace('/consent');
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
     <Screen
       keyboard
       header={<TopBar right={<Txt variant="small" color="secondary">2 of 3</Txt>} />}
-      footer={<Button label="Create account" onPress={submit} />}>
+      footer={
+        <>
+          <Button label="Create account" loading={busy} onPress={() => void submit()} />
+          <Txt variant="small" color="secondary" align="center">
+            Already have one?{' '}
+            <Txt variant="smallStrong" color="brand" onPress={() => router.replace('/log-in')}>
+              Log in
+            </Txt>
+          </Txt>
+        </>
+      }>
       <Txt variant="display">Create your account</Txt>
-      <Button
-        variant="secondary"
-        label="Continue with Google"
-        icon="account-circle"
-        onPress={() => Alert.alert('Google sign-in', 'Google sign-in needs the auth service, which isn\'t connected yet. Use email for now.')}
-      />
+      <ErrorBanner error={error} />
+      <Button variant="light" label="Continue with Google" icon="account-circle" onPress={() => Alert.alert('Google sign-in', 'Google sign-in is coming soon. Use your email for now.')} />
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
         <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
         <Txt variant="caption" color="muted">
@@ -69,6 +86,9 @@ export default function SignUp() {
           </Pressable>
         }
       />
+      <Txt variant="caption" color="muted">
+        By continuing you agree to the Terms and Privacy Policy.
+      </Txt>
     </Screen>
   );
 }

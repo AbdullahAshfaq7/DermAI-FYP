@@ -22,20 +22,18 @@ export function SetupHeader({
   label?: string;
 }) {
   return (
-    <View style={{ paddingHorizontal: space.screen, paddingTop: space.sm, gap: space.md }}>
-      {editing ? null : <StepBar total={total} current={step} tone={tone} />}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44 }}>
-        <IconButton icon="arrow-back" label="Go back" onPress={() => back()} />
-        {label ? (
-          <Txt variant="small" color="secondary">
-            {label}
-          </Txt>
-        ) : onSkip && !editing ? (
-          <Txt variant="small" color="secondary" onPress={onSkip} style={{ padding: space.sm }}>
-            Skip
-          </Txt>
-        ) : null}
-      </View>
+    <View style={{ paddingHorizontal: space.screen, paddingTop: space.sm, paddingBottom: space.xs, flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 52 }}>
+      <IconButton icon="arrow-back" label="Go back" onPress={() => back()} />
+      <View style={{ flex: 1 }}>{editing ? null : <StepBar total={total} current={step} tone={tone} />}</View>
+      {editing ? null : onSkip ? (
+        <Txt variant="small" color="secondary" onPress={onSkip} style={{ padding: space.xs }}>
+          Skip
+        </Txt>
+      ) : (
+        <Txt variant="small" color="muted">
+          {label ?? `${step} of ${total}`}
+        </Txt>
+      )}
     </View>
   );
 }

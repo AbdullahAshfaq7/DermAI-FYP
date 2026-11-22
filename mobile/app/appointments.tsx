@@ -2,8 +2,9 @@ import { router } from 'expo-router';
 import { View } from 'react-native';
 
 import { Avatar, EmptyState, List, Row, Screen, StatusPill, TopBar, Txt } from '@/components/ui/kit';
-import { DOCTORS, SERVICE_META } from '@/data/seed';
+import { SERVICE_META } from '@/data/seed';
 import { dayMonth, time, weekdayDayMonth } from '@/lib/format';
+import { doctorById } from '@/lib/selectors';
 import { useApp } from '@/store/AppStore';
 import { space } from '@/theme/tokens';
 
@@ -14,25 +15,17 @@ export default function Appointments() {
   const past = s.appointments.filter((a) => a.status !== 'upcoming').sort((a, b) => b.start.localeCompare(a.start));
 
   const row = (a: (typeof s.appointments)[number]) => {
-    const d = DOCTORS.find((x) => x.id === a.doctorId);
-    if (!d) return null;
-    const thread = s.threads.find((t) => t.doctorId === d.id);
+    const d = doctorById(s, a.doctorId) ?? { id: a.doctorId, name: 'Doctor no longer listed', tone: 2, photoUrl: null };
     const when = a.service === 'message' ? `Case review · ${dayMonth(a.start)}` : `${SERVICE_META[a.service].short} · ${weekdayDayMonth(a.start)}, ${time(a.start)}`;
     return (
       <Row
         key={a.id}
-        leading={<Avatar name={d.name} size={40} tone={d.tone} />}
+        leading={<Avatar name={d.name} size={40} tone={d.tone} uri={d.photoUrl} />}
         title={d.name}
         subtitle={a.reason ? `${when}\n${a.reason}` : when}
-        right={a.status === 'cancelled' ? <StatusPill label="Cancelled" /> : a.status === 'done' ? <StatusPill label="Done" tone="good" /> : null}
+        right={a.status === 'cancelled' ? <StatusPill label="Cancelled" /> : a.status === 'done' ? <StatusPill label={a.rating ? `${a.rating}★` : 'Rate'} tone="good" /> : null}
         chevron
-        onPress={() =>
-          a.status === 'upcoming'
-            ? router.push({ pathname: '/booked/[id]', params: { id: a.id } })
-            : thread
-              ? router.push({ pathname: '/thread/[id]', params: { id: thread.id } })
-              : router.push({ pathname: '/doctors/[id]', params: { id: d.id } })
-        }
+        onPress={() => router.push({ pathname: '/booked/[id]', params: { id: a.id } })}
       />
     );
   };

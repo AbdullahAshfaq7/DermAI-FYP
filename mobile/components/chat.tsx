@@ -1,71 +1,130 @@
 import * as Haptics from 'expo-haptics';
+import { router } from 'expo-router';
+import { Image } from 'expo-image';
 import { useRef, useState, type ComponentRef, type ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '@/components/ui/Icon';
-import { Txt } from '@/components/ui/kit';
-import type { Message } from '@/data/types';
+import { shadow, Txt } from '@/components/ui/kit';
+import type { DoctorNote as DoctorNoteT, Message } from '@/data/types';
 import { time } from '@/lib/format';
+import { alertError } from '@/lib/useSubmit';
 import { useTheme } from '@/theme/ThemeProvider';
 import { radius, space, type } from '@/theme/tokens';
 
-/** Patient bubbles are Ink on the right; AI and doctor are white with a border, on the left. */
+/** Your bubbles are Lamp (Emerald for doctors) on the right; the other side is white, on the left. */
 export function Bubble({ msg, mine, doctorName, clinician }: { msg: Message; mine: boolean; doctorName?: string; clinician?: boolean }) {
   const { colors } = useTheme();
-  const fill = mine ? (clinician ? colors.clinician : colors.ink) : colors.surface;
-  const fg = mine ? (clinician ? colors.onFill : colors.onInk) : colors.textPrimary;
+  const fill = mine ? colors.brand : colors.surface;
+  const fg = mine ? colors.onFill : colors.textPrimary;
+  const noteOnly = msg.note && (msg.note.stop.length || msg.note.keep.length || msg.note.changes?.length);
   return (
-    <View style={{ alignItems: mine ? 'flex-end' : 'flex-start', gap: space.sm }}>
-      <View
-        style={{
-          maxWidth: '86%',
-          backgroundColor: fill,
-          borderWidth: mine ? 0 : 1,
-          borderColor: colors.border,
-          borderRadius: radius.card,
-          borderBottomRightRadius: mine ? 4 : radius.card,
-          borderBottomLeftRadius: mine ? radius.card : 4,
-          paddingHorizontal: space.md,
-          paddingVertical: space.sm + 2,
-          gap: 6,
-        }}>
-        {msg.attachment ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Icon name="image" size={18} color={fg} />
-            <Txt variant="smallStrong" style={{ color: fg }}>
-              Photo attached
-            </Txt>
-          </View>
-        ) : null}
-        {msg.text && !(msg.attachment && msg.text === 'Sent 1 photo') ? <Txt variant="body" style={{ color: fg }}>{msg.text}</Txt> : null}
-      </View>
-      {msg.note && (msg.note.stop.length || msg.note.keep.length) ? <DoctorNote name={doctorName ?? 'your doctor'} stop={msg.note.stop} keep={msg.note.keep} /> : null}
-      <Txt variant="caption" color="muted">
-        {time(msg.at)}
-      </Txt>
+    <View style={{ alignItems: mine ? 'flex-end' : 'flex-start', gap: space.xs + 2 }}>
+      {noteOnly ? (
+        <DoctorNote name={doctorName ?? 'your doctor'} title={mine ? 'Your note' : undefined} text={msg.text} note={msg.note!} at={msg.at} clinician={clinician} />
+      ) : (
+        <View
+          style={[
+            {
+              maxWidth: '84%',
+              backgroundColor: fill,
+              borderRadius: 20,
+              borderBottomRightRadius: mine ? 6 : 20,
+              borderBottomLeftRadius: mine ? 20 : 6,
+              paddingHorizontal: space.md + 1,
+              paddingVertical: space.sm + 3,
+              gap: 6,
+            },
+            !mine && shadow(colors),
+          ]}>
+          {msg.attachment && /^(https?|file|data|blob|content|ph):/.test(msg.attachment) ? (
+            <Image source={{ uri: msg.attachment }} accessibilityLabel="Attached photo" style={{ width: 200, height: 240, borderRadius: 14, backgroundColor: colors.surfaceMuted }} contentFit="cover" />
+          ) : msg.attachment ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Icon name="image" size={18} color={fg} />
+              <Txt variant="smallStrong" style={{ color: fg }}>
+                Photo attached
+              </Txt>
+            </View>
+          ) : null}
+          {msg.text && !(msg.attachment && /^Sent (1|a) photo$/.test(msg.text)) ? <Txt variant="body" style={{ color: fg }}>{msg.text}</Txt> : null}
+        </View>
+      )}
+      {noteOnly ? null : (
+        <Txt variant="caption" color="muted">
+          {msg.pending ? 'Sending…' : time(msg.at)}
+        </Txt>
+      )}
     </View>
   );
 }
 
-export function DoctorNote({ name, stop, keep }: { name: string; stop: string[]; keep: string[] }) {
+/** A doctor's note stands apart from chat and can change the routine (E7). */
+export function DoctorNote({ name, title, text, note, at, clinician, stop, keep }: { name: string; title?: string; text?: string; note?: DoctorNoteT; at?: string; clinician?: boolean; stop?: string[]; keep?: string[] }) {
   const { colors } = useTheme();
+  const n: DoctorNoteT = note ?? { stop: stop ?? [], keep: keep ?? [] };
+  const changes = n.changes ?? [];
+  const changed = changes.length > 0 || n.stop.length > 0;
+  const short = name.replace(/^Dr\.\s+(\S+)\s+/, 'Dr. ');
   return (
-    <View style={{ alignSelf: 'stretch', backgroundColor: colors.clinicianWash, borderRadius: radius.card, padding: space.lg, gap: 4 }}>
-      <Txt variant="smallStrong" color="clinician">
-        Note from {name.replace(/^Dr\.\s+(\S+)\s+/, 'Dr. ')}
-      </Txt>
-      {stop.length ? (
-        <Txt variant="small">
-          <Txt variant="smallStrong">Stop: </Txt>
-          {stop.join(', ').toLowerCase()}.
+    <View style={[{ alignSelf: 'stretch', backgroundColor: colors.surface, borderRadius: 20, padding: space.md + 2, gap: 6, borderWidth: 1.5, borderColor: colors.clinicianWash }, shadow(colors)]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+        <Icon name="assignment" size={18} color={colors.clinician} />
+        <Txt variant="bodyStrong" style={{ flex: 1 }}>
+          {title ?? `Note from ${short}`}
+        </Txt>
+        {at ? (
+          <Txt variant="caption" color="muted">
+            {time(at)}
+          </Txt>
+        ) : null}
+      </View>
+      {text ? (
+        <Txt variant="small" color="secondary">
+          {text}
         </Txt>
       ) : null}
-      {keep.length ? (
+      {changes.map((c, i) => (
+        <View key={`${c.action}-${i}`} style={{ flexDirection: 'row', gap: space.sm, alignItems: 'center' }}>
+          <Icon name={c.action === 'add' ? 'add-circle-outline' : c.action === 'pause' ? 'pause-circle-outline' : 'remove-circle-outline'} size={16} color={c.action === 'add' ? colors.clinician : colors.actIcon} />
+          <Txt variant="small" style={{ flex: 1 }}>
+            <Txt variant="smallStrong">{c.action === 'add' ? 'Start' : c.action === 'pause' ? 'Pause' : 'Stop'} </Txt>
+            {c.title}
+            {c.action === 'add' && c.detail ? `, ${c.detail.toLowerCase()}` : c.action === 'pause' && c.weeks ? ` for ${c.weeks} week${c.weeks === 1 ? '' : 's'}` : ''}
+          </Txt>
+        </View>
+      ))}
+      {n.stop.length ? (
         <Txt variant="small">
-          <Txt variant="smallStrong">Continue: </Txt>
-          {keep.join(', ')}.
+          <Txt variant="smallStrong">Stop: </Txt>
+          {n.stop.join(', ').toLowerCase()}.
         </Txt>
+      ) : null}
+      {n.keep.length ? (
+        <Txt variant="small">
+          <Txt variant="smallStrong">Keep: </Txt>
+          {n.keep.join(', ')}.
+        </Txt>
+      ) : null}
+      {n.rescanWeeks ? (
+        <Txt variant="small" color="secondary">
+          New scan in {n.rescanWeeks} week{n.rescanWeeks === 1 ? '' : 's'}.
+        </Txt>
+      ) : null}
+      {changed && !clinician ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.clinicianWash, borderRadius: 99, paddingHorizontal: 9, paddingVertical: 3 }}>
+            <Icon name="sync" size={13} color={colors.clinicianDeep} />
+            <Txt variant="caption" color="clinician">
+              Routine updated
+            </Txt>
+          </View>
+          <View style={{ flex: 1 }} />
+          <Txt variant="smallStrong" color="clinician" onPress={() => router.navigate('/routine')}>
+            See changes
+          </Txt>
+        </View>
       ) : null}
     </View>
   );
@@ -76,10 +135,10 @@ export function Composer({
   onSend,
   onAttach,
   attachIcon = 'add-photo-alternate',
-  clinician,
 }: {
   placeholder: string;
-  onSend: (text: string) => void;
+  /** If the promise rejects, the text is put back so nothing is lost. */
+  onSend: (text: string) => void | Promise<unknown>;
   onAttach?: () => void;
   attachIcon?: IconName;
   clinician?: boolean;
@@ -90,14 +149,20 @@ export function Composer({
     const t = text.trim();
     if (!t) return;
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onSend(t);
     setText('');
+    const r = onSend(t);
+    if (r instanceof Promise) {
+      r.catch((e) => {
+        setText((cur) => cur || t);
+        alertError(e, "Couldn't send");
+      });
+    }
   };
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.sm }}>
+    <View style={[{ flexDirection: 'row', alignItems: 'flex-end', gap: space.xs, backgroundColor: colors.surface, borderRadius: 26, padding: 5, paddingLeft: onAttach ? 5 : space.lg }, shadow(colors)]}>
       {onAttach ? (
-        <Pressable onPress={onAttach} accessibilityRole="button" accessibilityLabel="Attach a photo" style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name={attachIcon} size={24} color={colors.textSecondary} />
+        <Pressable onPress={onAttach} accessibilityRole="button" accessibilityLabel="Attach a photo" style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name={attachIcon} size={22} color={colors.textSecondary} />
         </Pressable>
       ) : null}
       <TextInput
@@ -107,37 +172,15 @@ export function Composer({
         placeholderTextColor={colors.textMuted}
         multiline
         accessibilityLabel={placeholder}
-        style={[
-          type.body,
-          {
-            flex: 1,
-            maxHeight: 120,
-            minHeight: 44,
-            color: colors.textPrimary,
-            backgroundColor: colors.surface,
-            borderWidth: 1,
-            borderColor: colors.border,
-            borderRadius: 22,
-            paddingHorizontal: space.lg,
-            paddingTop: 11,
-            paddingBottom: 11,
-          },
-        ]}
+        style={[type.body, { flex: 1, maxHeight: 120, minHeight: 40, color: colors.textPrimary, paddingTop: 9, paddingBottom: 9 }]}
       />
       <Pressable
         onPress={send}
         disabled={!text.trim()}
         accessibilityRole="button"
         accessibilityLabel="Send"
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: 22,
-          backgroundColor: text.trim() ? (clinician ? colors.clinician : colors.ink) : colors.surfaceMuted,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-        <Icon name="arrow-upward" size={22} color={text.trim() ? (clinician ? colors.onFill : colors.onInk) : colors.textMuted} />
+        style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: text.trim() ? colors.brand : colors.surfaceMuted, alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name="arrow-upward" size={21} color={text.trim() ? colors.onFill : colors.textMuted} />
       </Pressable>
     </View>
   );
@@ -160,7 +203,7 @@ export function ChatLayout({ header, footer, children }: { header: ReactNode; fo
           onContentSizeChange={() => ref.current?.scrollToEnd({ animated: true })}>
           {children}
         </ScrollView>
-        <View style={{ paddingHorizontal: space.screen, paddingTop: space.sm, paddingBottom: space.sm, gap: space.sm, borderTopWidth: 1, borderTopColor: colors.hairline, backgroundColor: colors.bg }}>
+        <View style={{ paddingHorizontal: space.screen, paddingTop: space.sm, paddingBottom: space.sm, gap: space.sm, backgroundColor: colors.bg }}>
           {footer}
         </View>
       </KeyboardAvoidingView>

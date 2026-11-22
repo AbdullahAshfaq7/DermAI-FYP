@@ -1,109 +1,112 @@
-import * as FileSystem from 'expo-file-system/legacy';
-import { Alert, Share } from 'react-native';
+import { router } from 'expo-router';
+import { useState } from 'react';
+import { Alert, View } from 'react-native';
 
-import { Avatar, Button, List, Row, Screen, ToggleRow, TopBar, Txt } from '@/components/ui/kit';
-import { DOCTORS } from '@/data/seed';
+import { Avatar, Button, Card, List, Row, Screen, Segmented, ToggleRow, TopBar, Txt } from '@/components/ui/kit';
+import { shareTextFile } from '@/lib/exportFile';
 import { dayMonth } from '@/lib/format';
-import { resetTo } from '@/lib/nav';
-import { useActions, useStore } from '@/store/AppStore';
+import { useLocalPhotos } from '@/lib/localPhotos';
+import { doctorById } from '@/lib/selectors';
+import { alertError, attempt } from '@/lib/useSubmit';
+import { useActions, useApp } from '@/store/AppStore';
+import type { Settings } from '@/store/state';
+import { space } from '@/theme/tokens';
 
-/** F4 Privacy and data: sharing is visible and can be stopped. */
+/** F4 Privacy and data: photos stay on this phone; sharing is visible and can be stopped in one tap. */
 export default function Privacy() {
-  const { state, update } = useStore();
-  const { stopSharing, logOut } = useActions();
+  const state = useApp();
+  const actions = useActions();
+  const { stopSharing, updateSettings } = actions;
   const st = state.settings;
+  const local = useLocalPhotos(state.session?.id);
+  const photos = Object.values(local);
+  const mb = photos.reduce((n, p) => n + p.bytes, 0) / (1024 * 1024);
 
+  const [exporting, setExporting] = useState(false);
   const exportData = async () => {
-    const data = {
-      exportedAt: new Date().toISOString(),
-      account: state.session,
-      profile: state.profile,
-      scans: state.scans.map(({ photoUri: _p, ...rest }) => rest),
-      routinePreferences: state.routinePrefs,
-      appointments: state.appointments,
-      messages: state.threads,
-      saved: state.saved,
-    };
+    setExporting(true);
     try {
-      const path = `${FileSystem.cacheDirectory}dermai-export.json`;
-      await FileSystem.writeAsStringAsync(path, JSON.stringify(data, null, 2));
-      await Share.share({ url: path, title: 'DermAI data export', message: 'My DermAI data (scores, profile and notes).' });
-    } catch {
-      Alert.alert('Couldn\'t export', 'Try again in a moment.');
+      await shareTextFile('dermai-export.json', await actions.exportData());
+    } catch (e) {
+      alertError(e, "Couldn't export");
+    } finally {
+      setExporting(false);
     }
+  };
+
+  const setRetention = (v: Settings['photoRetention']) => {
+    if (v === st.photoRetention) return;
+    const shorter = (st.photoRetention === 'always' && v !== 'always') || (st.photoRetention === '1y' && v === '3m');
+    if (!shorter) return attempt(updateSettings({ photoRetention: v }));
+    Alert.alert('Keep photos for less time?', 'Photos older than that are deleted from this phone now. Scores stay.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete older photos', style: 'destructive', onPress: () => attempt(updateSettings({ photoRetention: v })) },
+    ]);
   };
 
   return (
     <Screen header={<TopBar title="Privacy and data" />}>
-      <List>
-        <ToggleRow
-          title="Keep scan photos"
-          subtitle={st.keepPhotos ? 'On: photos stay until you delete them' : 'Off: we keep scores and delete photos after 30 days'}
-          value={st.keepPhotos}
-          onChange={(v) => update((s) => ({ ...s, settings: { ...s.settings, keepPhotos: v } }))}
-        />
-        <ToggleRow
-          title="Help improve DermAI"
-          subtitle="Use my photos to train the model"
-          value={st.train}
-          onChange={(v) => update((s) => ({ ...s, settings: { ...s.settings, train: v }, consent: s.consent ? { ...s.consent, train: v } : s.consent }))}
-        />
-      </List>
-      <Txt variant="heading">Shared with</Txt>
+      <Card tone="brand">
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <Txt variant="bodyStrong">On this phone</Txt>
+          <Txt variant="caption" color="muted">
+            {mb < 0.1 ? `${Math.round(mb * 1024)} KB` : `${mb.toFixed(1)} MB`}
+          </Txt>
+        </View>
+        <Txt variant="title" style={{ marginTop: 4 }}>
+          {photos.length} scan photo{photos.length === 1 ? '' : 's'}
+        </Txt>
+        <Txt variant="small" color="secondary" style={{ marginTop: 2 }}>
+          We read each photo to score it, then delete our copy. Your scores are kept on your account.
+        </Txt>
+      </Card>
+      <Txt variant="heading">Keep photos for</Txt>
+      <Segmented
+        value={st.photoRetention}
+        onChange={setRetention}
+        options={[
+          { value: '3m', label: '3 months' },
+          { value: '1y', label: '1 year' },
+          { value: 'always', label: 'Always' },
+        ]}
+      />
+      <Txt variant="heading">Who can see your scans</Txt>
       {state.shares.length === 0 ? (
         <Txt variant="small" color="secondary">
-          You haven&apos;t shared any scans. When you book a doctor you can choose which scans they see.
+          No one. When you book a doctor you choose which scans they see, and for how long.
         </Txt>
       ) : (
-        <List>
-          {state.shares.map((sh) => {
-            const d = DOCTORS.find((x) => x.id === sh.doctorId);
-            if (!d) return null;
-            return (
-              <Row
-                key={sh.doctorId}
-                leading={<Avatar name={d.name} size={40} tone={d.tone} />}
-                title={d.name}
-                subtitle={`${sh.scanIds.length} scan${sh.scanIds.length === 1 ? '' : 's'}, until ${dayMonth(sh.until)}`}
-                right={
-                  <Button
-                    label="Stop"
-                    variant="destructive"
-                    compact
-                    onPress={() =>
-                      Alert.alert(`Stop sharing with ${d.name}?`, 'They won\'t see your scans any more. Messages stay.', [
-                        { text: 'Cancel', style: 'cancel' },
-                        { text: 'Stop sharing', style: 'destructive', onPress: () => stopSharing(sh.doctorId) },
-                      ])
-                    }
-                  />
+        state.shares.map((sh) => {
+          const d = doctorById(state, sh.doctorId) ?? { name: 'A doctor no longer listed', tone: 2, photoUrl: null };
+          const dates = sh.scanIds.map((id) => state.scans.find((x) => x.id === id)).filter((x) => !!x).map((x) => dayMonth(x!.date));
+          return (
+            <Card key={sh.doctorId} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+              <Avatar name={d.name} size={34} tone={d.tone} uri={d.photoUrl} />
+              <View style={{ flex: 1 }}>
+                <Txt variant="bodyStrong">{d.name}</Txt>
+                <Txt variant="caption" color="muted">
+                  {dates.length ? `Scans from ${dates.slice(0, 2).join(', ')}${dates.length > 2 ? ` and ${dates.length - 2} more` : ''}` : 'Scans'} · until {dayMonth(sh.until)}
+                </Txt>
+              </View>
+              <Button
+                label="Stop sharing"
+                variant="destructive"
+                compact
+                onPress={() =>
+                  Alert.alert(`Stop sharing with ${d.name}?`, "They won't see your scans any more, and their copy of the photos is deleted. Messages stay.", [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Stop sharing', style: 'destructive', onPress: () => attempt(stopSharing(sh.doctorId), "Couldn't stop sharing") },
+                  ])
                 }
               />
-            );
-          })}
-        </List>
+            </Card>
+          );
+        })
       )}
       <List>
-        <Row icon="download" title="Download my data" subtitle="Scores, profile and notes as a file" chevron onPress={exportData} />
-        <Row
-          icon="delete-forever"
-          title="Delete account"
-          subtitle="Removes everything within 7 days"
-          destructive
-          onPress={() =>
-            Alert.alert('Delete your account?', 'Your scans, photos, routine and messages will be removed within 7 days. This can\'t be undone.', [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Delete account',
-                style: 'destructive',
-                onPress: () => {
-                  logOut();
-                  resetTo('/welcome');
-                },
-              },
-            ])
-          }
-        />
+        <ToggleRow icon="model-training" iconTone="muted" title="Help improve DermAI" subtitle="Anonymised scans, only if you say yes" value={st.train} onChange={(v) => attempt(updateSettings({ train: v }))} />
+        <Row icon="download" iconTone="muted" title="Export my data" subtitle={exporting ? 'Preparing your file…' : 'Everything on your account, as a file'} chevron onPress={exporting ? undefined : () => void exportData()} />
+        <Row icon="delete" destructive title="Delete account and photos" chevron onPress={() => router.push('/delete-account')} />
       </List>
     </Screen>
   );

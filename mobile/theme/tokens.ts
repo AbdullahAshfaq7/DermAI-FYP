@@ -1,20 +1,21 @@
 import type { TextStyle } from 'react-native';
 
 export const fonts = {
-  sora500: 'Sora_500Medium',
-  sora600: 'Sora_600SemiBold',
-  sans400: 'DMSans_400Regular',
-  sans500: 'DMSans_500Medium',
-  sans600: 'DMSans_600SemiBold',
+  display600: 'BricolageGrotesque_600SemiBold',
+  display700: 'BricolageGrotesque_700Bold',
+  display800: 'BricolageGrotesque_800ExtraBold',
+  sans400: 'InstrumentSans_400Regular',
+  sans500: 'InstrumentSans_500Medium',
+  sans600: 'InstrumentSans_600SemiBold',
 } as const;
 
-/** design.md section 4. Tracking converted from % of size to points. */
+/** Lumen type: Bricolage Grotesque for titles and numbers, Instrument Sans for everything people read and tap. */
 export const type = {
-  score: { fontFamily: fonts.sora600, fontSize: 48, lineHeight: 52, letterSpacing: -1.9 },
-  display: { fontFamily: fonts.sora600, fontSize: 28, lineHeight: 32, letterSpacing: -0.7 },
-  title: { fontFamily: fonts.sora600, fontSize: 22, lineHeight: 26, letterSpacing: -0.44 },
-  heading: { fontFamily: fonts.sora600, fontSize: 17, lineHeight: 22, letterSpacing: -0.17 },
-  number: { fontFamily: fonts.sora600, fontSize: 22, lineHeight: 26, letterSpacing: -0.4 },
+  score: { fontFamily: fonts.display800, fontSize: 52, lineHeight: 54, letterSpacing: -2.6 },
+  display: { fontFamily: fonts.display800, fontSize: 30, lineHeight: 32, letterSpacing: -1.2 },
+  title: { fontFamily: fonts.display700, fontSize: 23, lineHeight: 26, letterSpacing: -0.7 },
+  heading: { fontFamily: fonts.display700, fontSize: 17, lineHeight: 21, letterSpacing: -0.2 },
+  number: { fontFamily: fonts.display800, fontSize: 24, lineHeight: 26, letterSpacing: -0.9 },
   body: { fontFamily: fonts.sans400, fontSize: 15, lineHeight: 22 },
   bodyStrong: { fontFamily: fonts.sans600, fontSize: 15, lineHeight: 22 },
   small: { fontFamily: fonts.sans400, fontSize: 13, lineHeight: 18 },
@@ -24,7 +25,7 @@ export const type = {
 
 export type TypeVariant = keyof typeof type;
 
-/** 4 pt base. Screen side padding 20, card gap 12, card inset 16, section gap 24. */
+/** 4 pt base. Screen side padding 20, card gap 12, card inset 16, section gap 24. Dock clearance 96. */
 export const space = {
   xxs: 2,
   xs: 4,
@@ -36,11 +37,15 @@ export const space = {
   xxl: 32,
 } as const;
 
+/** Lumen: big soft cards, pill buttons and chips. */
 export const radius = {
-  sheet: 24,
-  card: 16,
-  control: 12,
+  sheet: 28,
+  card: 22,
+  control: 16,
   full: 999,
 } as const;
 
 export const hitTarget = 44;
+
+/** Space to leave under scrolling tab screens so content clears the floating dock. */
+export const dockClearance = 104;

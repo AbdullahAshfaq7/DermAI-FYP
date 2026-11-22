@@ -15,9 +15,9 @@ export default function PatientTabs() {
           role="patient"
           tabs={[
             { name: 'home', label: 'Home', icon: 'home' },
-            { name: 'routine', label: 'Routine', icon: 'checklist' },
-            { name: 'care', label: 'Care', icon: 'forum', badge: unread },
-            { name: 'me', label: 'Me', icon: 'person' },
+            { name: 'routine', label: 'Routine', icon: 'spa' },
+            { name: 'care', label: 'Care', icon: 'stethoscope', badge: unread },
+            { name: 'me', label: 'Me', icon: 'person-outline', iconOn: 'person' },
           ]}
         />
       )}>

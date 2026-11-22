@@ -1,0 +1,17 @@
+# Next steps (deferred on 22 Nov 2026)
+
+The app and backend work end to end without any third-party service. These were left out on purpose and are the next pieces to add. Each one has a clear place to plug in.
+
+| Item | Today | Where it plugs in |
+| --- | --- | --- |
+| **LLM for Ask DermAI and routine text** (Claude API + RAG over a curated knowledge base) | Rule-based replies on the server, grounded in the latest scan and profile, with red-flag referral | `backend/app/ai_rules.py` `reply()`; keep the red-flag rules as a safety layer around the model |
+| **Skin model** (ONNX, trained on diverse skin) | Heuristic analyzer reading real pixels (face, focus, light checks; colour and texture per zone). Deterministic, not a validated medical model | `backend/app/analysis/` — implement `SkinAnalyzer` (`check`, `analyse`) and return it from `get_analyzer()` |
+| **Remote push notifications** (Expo push via EAS) | In-app notifications from the server, plus on-device reminders (routine, rescan, 1 h before a visit) | Store Expo push tokens per user; send from `backend/app/common.py` `notify()` |
+| **Password-reset email** (SMTP or a mail API) | 6-digit code is written to the server log; in `DEV_MODE` the app shows it | `backend/app/routers/auth.py` `forgot()` |
+| **Google sign-in** | "Coming soon" note on sign-up | New `/auth/google` endpoint that verifies the ID token; button on `mobile/app/sign-up.tsx` |
+| **Payments** (Safepay / PayFast, JazzCash, Easypaisa, cards) | The patient's payment choice is saved on the booking; status `due`; "pay at the visit" | `backend/app/routers/booking.py` `book()`; doctor payouts on `mobile/app/earnings.tsx` |
+| **Video visits** (Daily, Agora or Twilio) | Video button explains calls are coming soon; visits are booked and scheduled normally | Room per appointment; join button on `mobile/app/thread/[id].tsx` and `booked/[id].tsx` |
+| **Native live-check tuning** | Light/Steady/Framing come from the server precheck on a small frame about once a second | Test on real phones in Lahore light; consider on-device checks (expo-camera frame processor) to save data |
+| **Urdu** | Language setting stored; Urdu shows "coming in a later version" | i18n strings in the app |
+| **Cloud storage and deployment** (S3/R2, Render/Fly, managed Postgres) | Files on local disk behind signed links; local Postgres | `backend/app/storage.py` keeps the same four functions; deploy with Docker |
+| **Admin web panel** | Command line: `uv run python -m app.cli pending / approve-derm / reject-derm` and `/admin/*` endpoints | Small web page over the `/admin` endpoints |

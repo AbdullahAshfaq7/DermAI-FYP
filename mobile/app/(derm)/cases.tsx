@@ -19,8 +19,8 @@ export default function Cases() {
     .sort((a, b) => URGENCY_RANK[a.urgency] - URGENCY_RANK[b.urgency] || a.receivedAt.localeCompare(b.receivedAt));
 
   return (
-    <Screen>
-      <Txt variant="title" style={{ marginTop: space.sm }}>
+    <Screen dock>
+      <Txt variant="display" style={{ marginTop: space.sm }}>
         Cases
       </Txt>
       <Segmented
@@ -33,9 +33,9 @@ export default function Cases() {
         ]}
       />
       <View style={{ flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' }}>
-        <Chip label="Sorted by urgency" tone="clinician" selected={channel === 'all'} onPress={() => setChannel('all')} />
-        <Chip label="Video" tone="clinician" selected={channel === 'video'} onPress={() => setChannel(channel === 'video' ? 'all' : 'video')} />
-        <Chip label="Message" tone="clinician" selected={channel === 'message'} onPress={() => setChannel(channel === 'message' ? 'all' : 'message')} />
+        <Chip label="By urgency" icon="sort" selected={channel === 'all'} onPress={() => setChannel('all')} />
+        <Chip label="Video" selected={channel === 'video'} onPress={() => setChannel(channel === 'video' ? 'all' : 'video')} />
+        <Chip label="Message" selected={channel === 'message'} onPress={() => setChannel(channel === 'message' ? 'all' : 'message')} />
       </View>
       {list.length ? (
         <List>

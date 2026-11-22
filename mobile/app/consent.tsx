@@ -2,55 +2,44 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { Icon, type IconName } from '@/components/ui/Icon';
-import { Button, IconTile, Screen, TopBar, Txt } from '@/components/ui/kit';
+import { Icon } from '@/components/ui/Icon';
+import { Button, Card, ErrorBanner, List, Screen, Tick, TopBar, Txt } from '@/components/ui/kit';
+import { errorMessage } from '@/lib/api';
 import { homeFor } from '@/lib/nav';
-import { useActions, useStore } from '@/store/AppStore';
+import { useActions, useApp } from '@/store/AppStore';
 import { useTheme } from '@/theme/ThemeProvider';
-import { radius, space } from '@/theme/tokens';
+import { space } from '@/theme/tokens';
 
-function Check({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
-  const { colors } = useTheme();
+function CheckRow({ title, note, value, onChange }: { title: string; note: string; value: boolean; onChange: (v: boolean) => void }) {
   return (
     <Pressable
       onPress={() => onChange(!value)}
       accessibilityRole="checkbox"
       accessibilityState={{ checked: value }}
-      style={{ flexDirection: 'row', gap: space.md, alignItems: 'center', minHeight: 44 }}>
-      <View
-        style={{
-          width: 24,
-          height: 24,
-          borderRadius: 6,
-          borderWidth: 2,
-          borderColor: value ? colors.brand : colors.border,
-          backgroundColor: value ? colors.brand : 'transparent',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-        {value ? <Icon name="check" size={16} color={colors.onFill} /> : null}
+      accessibilityLabel={`${title}. ${note}`}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.md + 2, paddingVertical: space.md, minHeight: 56 }}>
+      <Tick on={value} />
+      <View style={{ flex: 1 }}>
+        <Txt variant="bodyStrong">{title}</Txt>
+        <Txt variant="small" color="muted">
+          {note}
+        </Txt>
       </View>
-      <Txt variant="body" style={{ flex: 1 }}>
-        {label}
-      </Txt>
     </Pressable>
   );
 }
 
-const POINTS: { icon: IconName; title: string; body: string }[] = [
-  { icon: 'lock', title: 'Encrypted and private', body: 'Only you, and a dermatologist you share a case with, can see your photos.' },
-  { icon: 'delete', title: 'Delete any time', body: 'Remove a scan or your whole account from Settings.' },
-  { icon: 'medical-information', title: 'Guidance, not diagnosis', body: 'DermAI doesn\'t replace a doctor. We\'ll tell you when to see one.' },
-];
-
-/** A5 Consent: age and photo consent before any camera use. */
+/** A5 Consent: age and photo consent before the camera ever opens. */
 export default function Consent() {
   const { colors } = useTheme();
-  const { state } = useStore();
+  const state = useApp();
   const { giveConsent } = useActions();
-  const [adult, setAdult] = useState(false);
-  const [train, setTrain] = useState(false);
   const derm = state.session?.role === 'dermatologist';
+  const [adult, setAdult] = useState(false);
+  const [keep, setKeep] = useState(derm);
+  const [train, setTrain] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <Screen
@@ -59,10 +48,19 @@ export default function Consent() {
         <>
           <Button
             label="Agree and continue"
-            disabled={!adult}
-            onPress={() => {
-              giveConsent(adult, train);
-              router.replace(homeFor({ ...state, consent: { adult, train, at: '' } }));
+            disabled={!adult || !keep}
+            loading={busy}
+            onPress={async () => {
+              setBusy(true);
+              setError(null);
+              try {
+                const r = await giveConsent(adult, train);
+                router.replace(homeFor(r.state));
+              } catch (e) {
+                setError(errorMessage(e));
+              } finally {
+                setBusy(false);
+              }
             }}
           />
           <Txt variant="small" color="brand" align="center" onPress={() => router.push('/about')}>
@@ -70,24 +68,41 @@ export default function Consent() {
           </Txt>
         </>
       }>
-      <Txt variant="display">Your photos stay yours</Txt>
-      <View style={{ gap: space.lg }}>
-        {POINTS.map((p) => (
-          <View key={p.title} style={{ flexDirection: 'row', gap: space.md }}>
-            <IconTile icon={p.icon} tone={derm ? 'clinician' : 'brand'} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <Txt variant="bodyStrong">{p.title}</Txt>
-              <Txt variant="small" color="secondary">
-                {p.body}
-              </Txt>
-            </View>
-          </View>
-        ))}
+      <View style={{ width: 50, height: 50, borderRadius: 17, backgroundColor: colors.brandWash, alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name="admin-panel-settings" size={26} color={colors.brandDeep} />
       </View>
-      <View style={{ backgroundColor: colors.surface, borderRadius: radius.card, borderWidth: 1, borderColor: colors.border, paddingHorizontal: space.lg, paddingVertical: space.sm }}>
-        <Check label={derm ? 'I\'m 18 or older' : 'I\'m 18 or older, or have a parent\'s consent'} value={adult} onChange={setAdult} />
-        <Check label="Let DermAI use my photos to improve the model (optional)" value={train} onChange={setTrain} />
-      </View>
+      <Txt variant="display">{derm ? 'Before you start' : 'Before your first scan'}</Txt>
+      <ErrorBanner error={error} />
+      <List>
+        <CheckRow title={derm ? "I'm 18 or older" : "I'm 18 or older, or have a parent's consent"} note="Required" value={adult} onChange={setAdult} />
+        {derm ? null : <CheckRow title="Keep my scan photos on this phone" note="Required to compare scans" value={keep} onChange={setKeep} />}
+        <CheckRow
+          title="Help improve DermAI"
+          note={derm ? 'Use my verdicts on AI readings for training. Optional.' : 'Share anonymised scans for training. Optional, change any time.'}
+          value={train}
+          onChange={setTrain}
+        />
+      </List>
+      <Card tone="brand" style={{ flexDirection: 'row', gap: space.md, alignItems: 'flex-start' }}>
+        <Icon name="lock" size={20} color={colors.brandDeep} />
+        <Txt variant="small" color="brandDeep" style={{ flex: 1 }}>
+          {derm ? (
+            <>
+              <Txt variant="smallStrong" color="brandDeep">
+                Patients&apos; photos stay on their phones.
+              </Txt>{' '}
+              You only see the scans a patient shares with you, and only until the share ends.
+            </>
+          ) : (
+            <>
+              <Txt variant="smallStrong" color="brandDeep">
+                Your photos stay on your phone.
+              </Txt>{' '}
+              We read each one to score it, then delete our copy. A photo only leaves your phone again when you share it with a doctor.
+            </>
+          )}
+        </Txt>
+      </Card>
     </Screen>
   );
 }

@@ -52,6 +52,12 @@ What you need to build and run DermAI. Exact dependency versions are pinned in
 | expo-constants | ~58.0.16 | App config |
 | expo-linking | ~58.0.17 | Deep links |
 | expo-web-browser | ~58.0.8 | In-app browser |
+| expo-secure-store | ~58.0.3 | Keeps sign-in tokens in the device keychain |
+| expo-document-picker | ~58.0.5 | PDF or photo upload for doctor credentials |
+| expo-sharing | ~58.0.23 | Sharing the data export file |
+| expo-notifications | ~58.1.9 | On-device reminders (routine, rescan, visits) |
+| expo-calendar | ~58.0.7 | Add a visit to the calendar |
+| expo-file-system | ~58.0.13 | Writing the export file |
 | @expo/vector-icons | ^15.0.3 | Icons |
 
 ### React Native libraries
@@ -74,17 +80,24 @@ What you need to build and run DermAI. Exact dependency versions are pinned in
 | eslint | ^9.25.0 |
 | eslint-config-expo | ~58.0.4 |
 
+## Backend (`backend/`)
+
+| Tool | Version | Notes |
+| --- | --- | --- |
+| Python | 3.11 or later | Managed by uv |
+| uv | 0.11 or later | `brew install uv`; `uv sync` installs from `uv.lock` |
+| PostgreSQL | 17 | `brew install postgresql@17`; `scripts/dev.sh` runs a project-local server on port 5433 |
+
+Main Python packages (exact versions in `backend/uv.lock`): FastAPI, Uvicorn, SQLAlchemy 2, Alembic, psycopg 3, Pydantic 2 + pydantic-settings, bcrypt, PyJWT, Pillow, NumPy, python-multipart. Tests: pytest, httpx.
+
 ## Planned components
 
-Not built yet; requirements will be added when work starts.
-
-- **Backend** (`backend/`): Python, FastAPI, PostgreSQL.
-- **ML** (`ml/`): skin-analysis model training and export.
+- **ML** (`ml/`): skin-analysis model training and ONNX export.
+- Integrations listed in [docs/NEXT.md](docs/NEXT.md).
 
 ## Setup
 
 ```bash
-cd mobile
-npm ci
-npx expo start
+cd backend && cp .env.example .env && bash scripts/dev.sh   # API on :8000
+cd mobile && npm ci && npx expo start                       # app
 ```

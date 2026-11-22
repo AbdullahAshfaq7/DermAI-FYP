@@ -54,6 +54,9 @@ export function ageSince(iso: string, now = new Date()): string {
   return hours < 24 ? `${hours} h` : `${Math.round(hours / 24)} d`;
 }
 
+/** "1 hr", "3 hrs" */
+export const hrs = (n: number) => `${n} hr${n === 1 ? '' : 's'}`;
+
 export const pkr = (n: number) => `PKR ${n.toLocaleString('en-US')}`;
 
 export function firstName(name: string): string {

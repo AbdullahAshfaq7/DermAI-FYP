@@ -2,23 +2,31 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { Icon } from '@/components/ui/Icon';
-import { Avatar, Button, EmptyState, IconButton, IconTile, List, Row, Screen, Stat, TopBar, Txt } from '@/components/ui/kit';
-import { DOCTORS, SERVICE_META } from '@/data/seed';
+import { Icon, type IconName } from '@/components/ui/Icon';
+import { Avatar, Button, EmptyState, IconButton, IconTile, OptionCard, Screen, Stat, TopBar, Txt, type IconTone } from '@/components/ui/kit';
 import type { ServiceType } from '@/data/types';
 import { pkr } from '@/lib/format';
+import { doctorById } from '@/lib/selectors';
+import { attempt } from '@/lib/useSubmit';
 import { useActions, useApp } from '@/store/AppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { space } from '@/theme/tokens';
 
-/** E4 Doctor profile: three ways to get care, priced up front. Also the dermatologist's public-profile preview. */
+const WAY: Record<ServiceType, { title: string; icon: IconName; tone: IconTone }> = {
+  message: { title: 'Photo review', icon: 'chat', tone: 'clinician' },
+  video: { title: 'Video visit', icon: 'videocam', tone: 'brand' },
+  clinic: { title: 'Clinic visit', icon: 'location-on', tone: 'peach' },
+};
+const ORDER: ServiceType[] = ['message', 'video', 'clinic'];
+
+/** E4 Doctor profile: three ways to get care, priced up front. Also the dermatologist's own preview. */
 export default function DoctorProfile() {
   const { colors } = useTheme();
   const { id, preview } = useLocalSearchParams<{ id: string; preview?: string }>();
   const s = useApp();
   const { toggleFavorite } = useActions();
-  const d = DOCTORS.find((x) => x.id === id);
-  const [service, setService] = useState<ServiceType | null>(d?.services[0]?.type ?? null);
+  const d = doctorById(s, id);
+  const [service, setService] = useState<ServiceType | null>(d?.services.find((x) => x.type === 'video')?.type ?? d?.services[0]?.type ?? null);
 
   if (!d) {
     return (
@@ -28,6 +36,8 @@ export default function DoctorProfile() {
     );
   }
   const fav = s.favorites.includes(d.id);
+  const services = [...d.services].sort((a, b) => ORDER.indexOf(a.type) - ORDER.indexOf(b.type));
+  const patients = d.patients ?? 0;
 
   return (
     <Screen
@@ -36,56 +46,60 @@ export default function DoctorProfile() {
           title={preview ? 'What patients see' : undefined}
           right={
             preview ? null : (
-              <IconButton icon={fav ? 'favorite' : 'favorite-border'} label={fav ? 'Remove from favourites' : 'Add to favourites'} color={fav ? colors.actIcon : undefined} onPress={() => toggleFavorite(d.id)} />
+              <IconButton icon={fav ? 'favorite' : 'favorite-border'} label={fav ? 'Remove from favourites' : 'Add to favourites'} color={fav ? colors.actIcon : undefined} onPress={() => attempt(toggleFavorite(d.id))} />
             )
           }
         />
       }
-      footer={preview ? null : <Button label="Book a visit" disabled={!service} onPress={() => router.push({ pathname: '/book/[id]', params: { id: d.id, service: service ?? 'video' } })} />}>
-      <View style={{ flexDirection: 'row', gap: space.lg, alignItems: 'center' }}>
-        <Avatar name={d.name} size={72} tone={d.tone} />
+      footer={
+        preview ? null : (
+          <Button
+            label={service === 'message' ? 'Send my case' : `Pick a time for ${service === 'clinic' ? 'the clinic' : 'video'}`}
+            disabled={!service}
+            onPress={() => router.push({ pathname: '/book/[id]', params: { id: d.id, service: service ?? 'video' } })}
+          />
+        )
+      }>
+      <View style={{ flexDirection: 'row', gap: space.md, alignItems: 'center' }}>
+        <Avatar name={d.name} size={68} tone={d.tone} uri={d.photoUrl} />
         <View style={{ flex: 1, gap: 2 }}>
           <Txt variant="title">{d.name}</Txt>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Icon name="verified" size={16} color={colors.brand} />
-            <Txt variant="smallStrong" color="brand">
-              PMDC {d.pmdc}
-            </Txt>
-          </View>
           <Txt variant="small" color="secondary">
             {d.qualifications}
           </Txt>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+            <Icon name="verified" size={15} color={colors.clinician} />
+            <Txt variant="smallStrong" color="clinician">
+              PMDC {d.pmdc}
+            </Txt>
+          </View>
         </View>
       </View>
       <View style={{ flexDirection: 'row', gap: space.sm }}>
-        <Stat value={`${d.years} yrs`} label="Practice" />
-        <Stat value={String(d.rating)} label={`${d.reviews} reviews`} />
-        <Stat value={`${d.replyHours} hrs`} label="Replies in" />
+        <Stat value={d.reviews ? String(d.rating) : 'New'} label={d.reviews ? `${d.reviews} reviews` : 'No reviews yet'} />
+        <Stat value={d.years ? String(d.years) : '–'} label="years" />
+        <Stat value={patients >= 1000 ? `${(patients / 1000).toFixed(1)}k` : String(patients)} label="patients" />
       </View>
-      <Txt variant="body" color="secondary">
+      <Txt variant="small" color="secondary">
+        {d.languages?.length ? `Speaks ${d.languages.join(' and ').replace(/ and (?=.* and )/g, ', ')}. ` : ''}
         {d.bio}
       </Txt>
-      <List>
-        {d.services.map((x) => {
-          const selected = service === x.type;
-          return (
-            <Row
-              key={x.type}
-              leading={<IconTile icon={SERVICE_META[x.type].icon} />}
-              title={SERVICE_META[x.type].title}
-              subtitle={x.detail}
-              onPress={preview ? undefined : () => setService(x.type)}
-              label={`${SERVICE_META[x.type].title}, ${pkr(x.fee)}${selected ? ', selected' : ''}`}
-              right={
-                <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                  <Txt variant="bodyStrong">{pkr(x.fee)}</Txt>
-                  {!preview ? <Icon name={selected ? 'radio-button-checked' : 'radio-button-unchecked'} size={18} color={selected ? colors.brand : colors.textMuted} /> : null}
-                </View>
-              }
-            />
-          );
-        })}
-      </List>
+      <Txt variant="heading">Ways to get care</Txt>
+      {services.map((x) => (
+        <OptionCard
+          key={x.type}
+          title={WAY[x.type].title}
+          subtitle={x.type === 'message' ? 'Written reply within 24 h' : x.detail}
+          selected={service === x.type}
+          onPress={() => (preview ? undefined : setService(x.type))}
+          right={
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+              <IconTile icon={WAY[x.type].icon} tone={WAY[x.type].tone} size={30} />
+              <Txt variant="heading">{pkr(x.fee).replace('PKR', 'Rs')}</Txt>
+            </View>
+          }
+        />
+      ))}
     </Screen>
   );
 }

@@ -1,20 +1,11 @@
-import {
-  DEFAULT_AVAILABILITY,
-  DEMO_APPOINTMENTS,
-  DEMO_CASES,
-  DEMO_NOTIFICATIONS,
-  DEMO_PATIENT,
-  DEMO_SAVED,
-  DEMO_SCANS,
-  DEMO_THREADS,
-  DEMO_VISITS,
-} from '@/data/seed';
+import { DEFAULT_AVAILABILITY } from '@/data/seed';
 import type {
   AppNotification,
   Appointment,
   Availability,
   Case,
   ConcernKey,
+  Doctor,
   Message,
   Role,
   SavedItem,
@@ -28,28 +19,19 @@ import { todayKey } from '@/lib/format';
 
 export { todayKey };
 
-export const STATE_VERSION = 2;
-
-/** Demo dates are written around 15 Nov 2026. Shift upcoming ones so the demo stays current on any day. */
-const DEMO_ANCHOR = new Date('2026-11-15T00:00:00+05:00');
-function rebase(iso: string): string {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const anchor = new Date(DEMO_ANCHOR);
-  anchor.setHours(0, 0, 0, 0);
-  const shift = Math.round((today.getTime() - anchor.getTime()) / 86400000);
-  if (shift <= 0) return iso;
-  const d = new Date(iso);
-  d.setDate(d.getDate() + shift);
-  return d.toISOString();
-}
+/** Must match STATE_VERSION in backend/app/state.py; cached state from another version is ignored. */
+export const STATE_VERSION = 3;
 
 export interface Profile {
   tone: number | null;
   feel: SkinType | null;
   concerns: ConcernKey[];
+  /** Concerns outside the six the scan reads, e.g. "Fine lines". */
+  otherConcerns: string[];
   avoid: string[];
   current: string | null;
+  /** What they use now: Cleanser, Moisturiser, Sunscreen, Serum or treatment. */
+  currentProducts: string[];
   done: boolean;
   phone: string;
   dob: string;
@@ -57,14 +39,29 @@ export interface Profile {
   city: string;
 }
 
+export interface DoctorStep {
+  id: string;
+  title: string;
+  /** "Every other night" */
+  detail: string;
+  period: 'am' | 'pm';
+  by?: string;
+  at?: string;
+}
+
 export interface RoutinePrefs {
   amTime: string;
   pmTime: string;
-  length: 3 | 4 | 6;
+  /** Steps per half of the day. */
+  length: 2 | 3 | 4 | 5;
   budget: 'Low' | 'Medium' | 'Any';
   rebuild: boolean;
   /** Steps a doctor or the user removed from the routine. */
   removed: string[];
+  /** Steps a dermatologist added. */
+  doctorSteps: DoctorStep[];
+  /** Step id -> date (YYYY-MM-DD) a doctor's pause ends. */
+  paused: Record<string, string>;
 }
 
 export interface Settings {
@@ -76,6 +73,12 @@ export interface Settings {
   quietFrom: string;
   quietTo: string;
   keepPhotos: boolean;
+  /** How long scan photos stay on this phone. */
+  photoRetention: '3m' | '1y' | 'always';
+  /** Skip the scan guide (offered after the third scan). */
+  skipGuide: boolean;
+  /** Set when a doctor asks for a new scan by a date (YYYY-MM-DD). */
+  rescanDue: string | null;
   train: boolean;
   language: 'English' | 'Urdu';
 }
@@ -86,27 +89,57 @@ export interface Share {
   until: string;
 }
 
+export interface LedgerEntry {
+  id: string;
+  patientName: string;
+  service: ServiceType;
+  start: string;
+  fee: number;
+  status: Appointment['status'];
+}
+
 export interface DermProfile {
+  id?: string;
   step: 'profile' | 'credentials' | 'services' | 'done';
-  status: 'draft' | 'pending' | 'approved';
+  status: 'draft' | 'pending' | 'approved' | 'rejected';
+  reviewNote?: string;
   specialties: string[];
   photo: boolean;
+  photoUrl?: string | null;
   pmdc: string;
   qualification: string;
   clinic: string;
+  city?: string;
   certificate: string | null;
   cnic: string | null;
+  degree?: string | null;
+  languages?: string[];
+  practisingSince?: number | null;
+  submittedAt?: string | null;
   services: Record<ServiceType, { on: boolean; fee: number }>;
   availability: Availability;
   cases: Case[];
   visits: Visit[];
   /** Thread ids the doctor has read. */
   readThreads: string[];
+  verifiedAt?: string | null;
+  stats?: { patients: number; rating: number; reviews: number; replyHours: number };
+  ledger?: LedgerEntry[];
+  commissionPct?: number;
+}
+
+export interface Session {
+  id?: string;
+  role: Role | 'admin';
+  name: string;
+  email: string;
+  demo: boolean;
+  avatarUrl?: string | null;
 }
 
 export interface AppState {
   version: number;
-  session: { role: Role; name: string; email: string; demo: boolean } | null;
+  session: Session | null;
   pendingRole: Role | null;
   consent: { adult: boolean; train: boolean; at: string } | null;
   profile: Profile;
@@ -124,14 +157,18 @@ export interface AppState {
   aiChat: Message[];
   notifications: AppNotification[];
   derm: DermProfile;
+  /** PMDC-verified doctors patients can book. */
+  doctors: Doctor[];
 }
 
 const emptyProfile: Profile = {
   tone: null,
   feel: null,
   concerns: [],
+  otherConcerns: [],
   avoid: [],
   current: null,
+  currentProducts: [],
   done: false,
   phone: '',
   dob: '',
@@ -139,7 +176,7 @@ const emptyProfile: Profile = {
   city: '',
 };
 
-const defaultDerm: DermProfile = {
+export const defaultDerm: DermProfile = {
   step: 'profile',
   status: 'draft',
   specialties: [],
@@ -156,6 +193,7 @@ const defaultDerm: DermProfile = {
   readThreads: [],
 };
 
+/** Signed-out state. Everything else comes from GET /me/state. */
 export const initialState: AppState = {
   version: STATE_VERSION,
   session: null,
@@ -166,7 +204,7 @@ export const initialState: AppState = {
   guideSeen: 0,
   routineLog: {},
   streakBase: 0,
-  routinePrefs: { amTime: '7:30 am', pmTime: '10:00 pm', length: 4, budget: 'Medium', rebuild: true, removed: [] },
+  routinePrefs: { amTime: '7:30 am', pmTime: '10:00 pm', length: 4, budget: 'Medium', rebuild: true, removed: [], doctorSteps: [], paused: {} },
   settings: {
     remindAm: true,
     remindPm: true,
@@ -176,6 +214,9 @@ export const initialState: AppState = {
     quietFrom: '11 pm',
     quietTo: '7 am',
     keepPhotos: false,
+    photoRetention: '1y',
+    skipGuide: false,
+    rescanDue: null,
     train: false,
     language: 'English',
   },
@@ -187,60 +228,5 @@ export const initialState: AppState = {
   aiChat: [],
   notifications: [],
   derm: defaultDerm,
+  doctors: [],
 };
-
-
-/** The returning patient from the storyboard: five scans, a booked visit and a doctor thread. */
-export function demoPatientState(): AppState {
-  return {
-    ...initialState,
-    session: { role: 'patient', name: DEMO_PATIENT.name, email: DEMO_PATIENT.email, demo: true },
-    consent: { adult: true, train: false, at: '2026-10-08T09:00:00+05:00' },
-    profile: {
-      tone: 2,
-      feel: 'Combination',
-      concerns: ['redness', 'acne', 'darkSpots'],
-      avoid: ['Fragrance', 'Benzoyl peroxide'],
-      current: 'Cleanser and moisturiser',
-      done: true,
-      phone: DEMO_PATIENT.phone,
-      dob: DEMO_PATIENT.dob,
-      gender: DEMO_PATIENT.gender,
-      city: DEMO_PATIENT.city,
-    },
-    scans: DEMO_SCANS,
-    guideSeen: 5,
-    routineLog: { [todayKey()]: ['am-cleanser', 'am-niacinamide'] },
-    streakBase: 9,
-    shares: [{ doctorId: 'dr-sana', scanIds: ['scan-1102', 'scan-1029', 'scan-1018'], until: '2026-12-16' }],
-    saved: DEMO_SAVED,
-    appointments: DEMO_APPOINTMENTS.map((a) => (a.status === 'upcoming' ? { ...a, start: rebase(a.start) } : a)),
-    threads: DEMO_THREADS.filter((t) => t.patientName === DEMO_PATIENT.name),
-    notifications: DEMO_NOTIFICATIONS,
-  };
-}
-
-/** Dr. Sana Iqbal: verified, with a full inbox and schedule. */
-export function demoDoctorState(): AppState {
-  return {
-    ...initialState,
-    session: { role: 'dermatologist', name: 'Dr. Sana Iqbal', email: 'sana@clinic.pk', demo: true },
-    consent: { adult: true, train: false, at: '2026-11-03T09:00:00+05:00' },
-    threads: DEMO_THREADS,
-    derm: {
-      ...defaultDerm,
-      step: 'done',
-      status: 'approved',
-      specialties: ['Acne', 'Pigmentation', 'Melasma'],
-      photo: true,
-      pmdc: '54123-P',
-      qualification: 'FCPS Dermatology',
-      clinic: 'Skin Health Clinic, Gulberg III',
-      certificate: 'PMDC_certificate.pdf',
-      cnic: 'CNIC_front.jpg',
-      visits: DEMO_VISITS.map((v) => ({ ...v, start: rebase(v.start) })),
-      cases: DEMO_CASES.map((c) => ({ ...c, receivedAt: rebase(c.receivedAt) })),
-      readThreads: ['thread-hassan'],
-    },
-  };
-}

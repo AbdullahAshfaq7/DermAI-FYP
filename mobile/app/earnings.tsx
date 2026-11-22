@@ -1,37 +1,53 @@
 import { View } from 'react-native';
 
-import { Card, List, Row, Screen, Stat, TopBar, Txt } from '@/components/ui/kit';
+import { Card, EmptyState, List, Row, Screen, Stat, StatusPill, TopBar, Txt } from '@/components/ui/kit';
 import { SERVICE_META } from '@/data/seed';
-import { dayMonth, pkr } from '@/lib/format';
+import { dayMonth, monthName, pkr } from '@/lib/format';
 import { useApp } from '@/store/AppStore';
 import { space } from '@/theme/tokens';
 
-/** Earnings and payouts (from H8). Figures come from booked visits; payouts need a payment provider. */
+/** Earnings and payouts (from H8): fees actually booked by patients, this calendar month. */
 export default function Earnings() {
   const s = useApp();
-  const fee = (t: 'video' | 'clinic' | 'message' | undefined) => (t ? s.derm.services[t].fee : 0);
-  const visits = s.derm.visits.filter((v) => v.kind === 'visit');
-  const reviews = s.derm.cases.filter((c) => c.channel === 'message' && c.status !== 'waiting');
-  const gross = visits.reduce((n, v) => n + fee(v.service), 0) + reviews.length * s.derm.services.message.fee;
-  const commission = Math.round(gross * 0.1);
+  const now = new Date();
+  const pct = s.derm.commissionPct ?? 10;
+  const ledger = s.derm.ledger ?? [];
+  const thisMonth = ledger.filter((x) => {
+    const d = new Date(x.start);
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  });
+  const earned = thisMonth.filter((x) => x.status === 'done');
+  const booked = thisMonth.filter((x) => x.status === 'upcoming');
+  const sum = (xs: typeof ledger) => xs.reduce((n, x) => n + x.fee, 0);
+  const gross = sum(earned);
+  const commission = Math.round((gross * pct) / 100);
 
   return (
     <Screen header={<TopBar title="Earnings and payouts" />}>
+      <Txt variant="heading">{monthName(now)}</Txt>
       <View style={{ flexDirection: 'row', gap: space.sm }}>
-        <Stat value={pkr(gross - commission)} label="This month, after fees" />
+        <Stat value={pkr(gross - commission)} label="Earned, after fees" />
+        <Stat value={pkr(sum(booked))} label="Booked, not yet seen" />
       </View>
-      <List>
-        {visits.map((v) => (
-          <Row key={v.id} title={v.patientName ?? 'Visit'} subtitle={`${v.service ? SERVICE_META[v.service].short : ''} · ${dayMonth(v.start)}`} value={pkr(fee(v.service))} />
-        ))}
-        {reviews.map((c) => (
-          <Row key={c.id} title={c.patient.name} subtitle={`Message review · ${dayMonth(c.receivedAt)}`} value={pkr(s.derm.services.message.fee)} />
-        ))}
-        <Row title="DermAI fee (10%)" value={`– ${pkr(commission)}`} />
-      </List>
+      {thisMonth.length === 0 ? (
+        <EmptyState icon="payments" title="Nothing this month yet" body="Fees from visits and case reviews show here once patients book you." />
+      ) : (
+        <List>
+          {thisMonth.map((x) => (
+            <Row
+              key={x.id}
+              title={x.patientName}
+              subtitle={`${SERVICE_META[x.service].short} · ${dayMonth(x.start)}`}
+              value={pkr(x.fee)}
+              right={x.status === 'upcoming' ? <StatusPill label="Booked" tone="clinician" /> : undefined}
+            />
+          ))}
+          {gross ? <Row title={`DermAI fee (${pct}%)`} value={`– ${pkr(commission)}`} /> : null}
+        </List>
+      )}
       <Card tone="clinician">
         <Txt variant="small" color="clinician">
-          Payouts aren&apos;t connected yet. The commission rate and payout method (bank transfer or JazzCash) are still to be decided.
+          Patients pay you at the visit for now. Online payments and payouts (bank transfer or JazzCash) are coming soon.
         </Txt>
       </Card>
     </Screen>

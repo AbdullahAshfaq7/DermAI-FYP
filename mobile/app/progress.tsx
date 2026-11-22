@@ -1,27 +1,26 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, View } from 'react-native';
+import { View } from 'react-native';
 
-import { Card, Chip, EmptyState, IconButton, List, Row, Screen, StatusPill, TopBar, Txt } from '@/components/ui/kit';
+import { Card, EmptyState, List, Row, Screen, Segmented, StatusPill, TopBar, Txt } from '@/components/ui/kit';
 import { PhotoCompare, TrendLine } from '@/components/visual';
-import { CONCERNS } from '@/data/seed';
-import type { ConcernKey } from '@/data/types';
+import { CONCERN_ORDER, CONCERNS } from '@/data/seed';
 import { dayMonth } from '@/lib/format';
+import { useLocalPhotos } from '@/lib/localPhotos';
+import { photoFor } from '@/lib/selectors';
 import { useApp } from '@/store/AppStore';
 import { space } from '@/theme/tokens';
 
-type Metric = 'score' | ConcernKey;
-const METRICS: Metric[] = ['score', 'redness', 'acne', 'darkSpots', 'dryness', 'pores', 'sensitivity'];
+const RANGES = { '30': 30, '42': 42, '90': 90 } as const;
 
-/** D4 Progress: drag the divider to compare photos; trend per concern. */
+/** D4 Progress: drag the divider to compare; trend per concern. */
 export default function Progress() {
   const s = useApp();
-  const [metric, setMetric] = useState<Metric>('score');
-  const [range, setRange] = useState<'all' | '30'>('all');
+  const local = useLocalPhotos(s.session?.id);
+  const [range, setRange] = useState<keyof typeof RANGES>('42');
   const [now] = useState(() => Date.now());
-  const scans = [...s.scans]
-    .filter((x) => range === 'all' || now - new Date(x.date).getTime() < 30 * 86400000)
-    .reverse();
+  const inRange = [...s.scans].filter((x) => now - new Date(x.date).getTime() < RANGES[range] * 86400000).reverse();
+  const scans = inRange.length >= 2 ? inRange : [...s.scans].reverse();
 
   if (scans.length < 2) {
     return (
@@ -33,78 +32,66 @@ export default function Progress() {
 
   const first = scans[0];
   const last = scans[scans.length - 1];
-  const values = scans.map((x) => (metric === 'score' ? x.score : x.concerns[metric].pct));
-  const a = values[0];
-  const b = values[values.length - 1];
-  const better = metric === 'score' ? b >= a : b <= a;
-  const diff = b - a;
-  const label = metric === 'score' ? 'Score' : CONCERNS[metric].label;
-  const daylight = scans.every((x) => x.quality === 'good');
-  const avgGap = Math.round((new Date(last.date).getTime() - new Date(first.date).getTime()) / 86400000 / (scans.length - 1));
+  const rows = CONCERN_ORDER.map((k) => ({ k, a: first.concerns[k].pct, b: last.concerns[k].pct }))
+    .filter((r) => Math.max(r.a, r.b) >= 25)
+    .sort((x, y) => Math.abs(y.b - y.a) - Math.abs(x.b - x.a));
 
   return (
-    <Screen
-      header={
-        <TopBar
-          title="Progress"
-          right={
-            <IconButton
-              icon="tune"
-              label="Choose range"
-              onPress={() =>
-                Alert.alert('Show scans from', undefined, [
-                  { text: 'All time', onPress: () => setRange('all') },
-                  { text: 'Last 30 days', onPress: () => setRange('30') },
-                  { text: 'Cancel', style: 'cancel' },
-                ])
+    <Screen header={<TopBar title="Progress" />}>
+      <Segmented
+        value={range}
+        onChange={setRange}
+        options={[
+          { value: '30', label: '1 month' },
+          { value: '42', label: '6 weeks' },
+          { value: '90', label: '3 months' },
+        ]}
+      />
+      {inRange.length < 2 ? (
+        <Txt variant="small" color="muted">
+          Fewer than two scans in that range, so this shows all your scans.
+        </Txt>
+      ) : null}
+      <PhotoCompare
+        height={220}
+        before={{ uri: photoFor(first, local), tone: first.photoTone, label: dayMonth(first.date) }}
+        after={{ uri: photoFor(last, local), tone: last.photoTone, label: dayMonth(last.date) }}
+      />
+      <List>
+        {rows.map(({ k, a, b }) => {
+          const d = b - a;
+          return (
+            <Row
+              key={k}
+              title={CONCERNS[k].label}
+              subtitle={`${a} to ${b}`}
+              right={
+                <StatusPill
+                  icon={d < 0 ? 'trending-down' : d > 0 ? 'trending-up' : 'trending-flat'}
+                  label={d <= -3 ? 'Improving' : d >= 3 ? 'Up slightly' : 'Steady'}
+                  tone={d <= -3 ? 'good' : d >= 3 ? 'watch' : 'neutral'}
+                />
               }
             />
-          }
-        />
-      }>
-      <PhotoCompare
-        before={{ uri: first.photoUri, tone: first.photoTone, label: dayMonth(first.date) }}
-        after={{ uri: last.photoUri, tone: last.photoTone + 1, label: dayMonth(last.date) }}
-      />
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
-        {METRICS.map((m) => (
-          <Chip key={m} label={m === 'score' ? 'Score' : CONCERNS[m].label} selected={metric === m} onPress={() => setMetric(m)} />
-        ))}
-      </View>
+          );
+        })}
+      </List>
       <Card>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Txt variant="title">
-            {metric === 'score' ? `${a} to ${b}` : `${a}% to ${b}%`}
-          </Txt>
-          <StatusPill label={`${diff > 0 ? '+' : ''}${diff}${metric === 'score' ? '' : '%'}`} tone={diff === 0 ? 'neutral' : better ? 'good' : 'act'} />
+          <Txt variant="bodyStrong">Skin score</Txt>
+          <StatusPill label={`${first.score} to ${last.score}`} tone={last.score >= first.score ? 'good' : 'act'} />
         </View>
-        <Txt variant="small" color="secondary" style={{ marginBottom: space.sm }}>
-          {label}
-          {metric === 'score' ? ', higher is better' : ', lower is better'}
-        </Txt>
-        <TrendLine values={values} dots="all" height={90} />
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: space.sm }}>
-          <Txt variant="small" color="secondary">
+        <TrendLine values={scans.map((x) => x.score)} dots="all" height={80} />
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: space.xs }}>
+          <Txt variant="caption" color="muted">
             {dayMonth(first.date)}
           </Txt>
-          {scans.length > 2 ? (
-            <Txt variant="small" color="secondary">
-              {dayMonth(scans[Math.floor(scans.length / 2)].date)}
-            </Txt>
-          ) : null}
-          <Txt variant="small" color="secondary">
+          <Txt variant="caption" color="muted">
             {dayMonth(last.date)}
           </Txt>
         </View>
       </Card>
-      <List>
-        <Row
-          title={`${scans.length} scans`}
-          subtitle={`Every ${avgGap} days${daylight ? ', all in daylight' : ', some in dim light'}`}
-          chevron
-          onPress={() => router.push('/history')}
-        />
-      </List>
+      <Row title={`${scans.length} scans`} subtitle="See them all in Scan history" chevron onPress={() => router.push('/history')} />
     </Screen>
   );
 }

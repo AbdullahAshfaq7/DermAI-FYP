@@ -1,31 +1,43 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Alert, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Pressable, View } from 'react-native';
 
-import { Button, IconTile, Screen, TopBar, Txt } from '@/components/ui/kit';
 import type { IconName } from '@/components/ui/Icon';
+import { Button, Card, IconTile, Screen, Tick, TopBar, Txt, type IconTone } from '@/components/ui/kit';
 import { pickFromLibrary } from '@/lib/photos';
-import { useApp } from '@/store/AppStore';
+import { attempt } from '@/lib/useSubmit';
+import { useActions, useApp } from '@/store/AppStore';
 import { space } from '@/theme/tokens';
 
-const TIPS: { icon: IconName; title: string; body: string }[] = [
-  { icon: 'light-mode', title: 'Face a window', body: 'Daylight, no lamp behind you' },
-  { icon: 'face-retouching-off', title: 'Bare skin', body: 'No makeup, glasses pushed up' },
-  { icon: 'straighten', title: 'Arm\'s length', body: 'Hold still for two seconds' },
+const TIPS: { icon: IconName; tone: IconTone; title: string; body: string }[] = [
+  { icon: 'wb-sunny', tone: 'butter', title: 'Face a window', body: 'Daylight in front of you, no lamp behind.' },
+  { icon: 'face-retouching-off', tone: 'peach', title: 'Bare skin', body: 'No makeup. Hair off your forehead.' },
+  { icon: 'straighten', tone: 'brand', title: "Arm's length", body: "About 30 cm. We'll tell you if you're too close." },
 ];
 
-/** C1 Scan guide: shown before every scan, skippable after the third. */
+/** C1 Scan guide: shown before every scan; can be hidden after the third. */
 export default function ScanGuide() {
-  const { guideSeen } = useApp();
+  const { guideSeen, scans, settings } = useApp();
+  const { updateSettings } = useActions();
   const [busy, setBusy] = useState(false);
+  const [hide, setHide] = useState(false);
+
+  useEffect(() => {
+    if (settings.skipGuide) router.replace('/scan/camera');
+  }, [settings.skipGuide]);
+
+  const go = (to: () => void) => {
+    if (hide) attempt(updateSettings({ skipGuide: true }));
+    to();
+  };
 
   const upload = async () => {
     setBusy(true);
     try {
       const uri = await pickFromLibrary();
-      if (uri) router.push({ pathname: '/scan/review', params: { uri } });
+      if (uri) go(() => router.push({ pathname: '/scan/review', params: { uri } }));
     } catch {
-      Alert.alert('Couldn\'t open that photo', 'Try another one, or take a new photo.');
+      Alert.alert("Couldn't open that photo", 'Try another one, or take a new photo.');
     } finally {
       setBusy(false);
     }
@@ -34,33 +46,37 @@ export default function ScanGuide() {
   return (
     <Screen
       edges={['top']}
-      header={
-        <TopBar
-          left="close"
-          onLeft={() => router.back()}
-          title="Before you scan"
-          right={guideSeen >= 3 ? <Txt variant="small" color="secondary" onPress={() => router.replace('/scan/camera')}>Skip</Txt> : null}
-        />
-      }
+      header={<TopBar left="close" onLeft={() => router.back()} right={<Txt variant="small" color="muted">Scan {scans.length + 1}</Txt>} />}
       footer={
         <>
-          <Button label="Open camera" variant="brand" icon="photo-camera" onPress={() => router.push('/scan/camera')} />
-          <Button label="Upload a photo instead" variant="ghost" loading={busy} onPress={upload} />
+          <Button label="Open camera" icon="photo-camera" onPress={() => go(() => router.push('/scan/camera'))} />
+          <Button label="Upload a photo instead" variant="ghost" loading={busy} onPress={() => void upload()} />
         </>
       }>
-      <View style={{ gap: space.xl, marginTop: space.lg }}>
-        {TIPS.map((t) => (
-          <View key={t.title} style={{ flexDirection: 'row', gap: space.lg, alignItems: 'center' }}>
-            <IconTile icon={t.icon} size={52} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <Txt variant="heading">{t.title}</Txt>
-              <Txt variant="body" color="secondary">
-                {t.body}
-              </Txt>
-            </View>
+      <Txt variant="display">Three things for a clear scan</Txt>
+      {TIPS.map((t) => (
+        <Card key={t.title} style={{ flexDirection: 'row', gap: space.md, alignItems: 'center' }}>
+          <IconTile icon={t.icon} tone={t.tone} size={48} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Txt variant="bodyStrong">{t.title}</Txt>
+            <Txt variant="small" color="secondary">
+              {t.body}
+            </Txt>
           </View>
-        ))}
-      </View>
+        </Card>
+      ))}
+      {guideSeen >= 3 ? (
+        <Pressable
+          onPress={() => setHide((v) => !v)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: hide }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: 44 }}>
+          <Tick on={hide} size={22} />
+          <Txt variant="small" color="secondary">
+            Don&apos;t show this again
+          </Txt>
+        </Pressable>
+      ) : null}
     </Screen>
   );
 }
