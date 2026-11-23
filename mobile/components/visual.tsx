@@ -1,36 +1,60 @@
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useMemo, useState } from 'react';
+import { LinearGradient as FadeGradient } from 'expo-linear-gradient';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
-import Svg, { Circle, Ellipse, G, Line, Path, Polyline } from 'react-native-svg';
+import Svg, { Circle, Defs, Ellipse, G, Line, LinearGradient, Path, Polyline, Rect, Stop } from 'react-native-svg';
 
 import { Icon } from '@/components/ui/Icon';
 import { Txt } from '@/components/ui/kit';
+import logo from '@/assets/logo.json';
 import { CONCERNS, ZONE_LABEL } from '@/data/seed';
 import type { ConcernKey, ConcernLevel, ConcernReading, ZoneKey } from '@/data/types';
 import { concernScale, fitzpatrick } from '@/theme/colors';
 import { useTheme } from '@/theme/ThemeProvider';
 import { fonts, radius, space, type } from '@/theme/tokens';
 
-/* ───────────── Logo: a camera aperture of the six Fitzpatrick tones around a violet lens ───────────── */
-
-const BLADE = 'M13.67 4.58A22 22 0 0 1 34.33 4.58L30.69 17.98A9 9 0 0 0 22.75 15.09Z';
+/* ───────────── Logo: a head in profile whose thoughts dissolve into skin-tone pixels ───────────── */
 
 export function LogoMark({ size = 40 }: { size?: number; ring?: string }) {
+  // Each mark gets its own gradient ids: a hidden copy elsewhere (the splash under a stack) would otherwise win the lookup.
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
+  const leafId = `dermaiLeaf${uid}`;
+  const headId = `dermaiHead${uid}`;
+  const g = (p: typeof logo.head, id: string) => (
+    <LinearGradient id={id} gradientUnits="userSpaceOnUse" x1={p.from[0]} y1={p.from[1]} x2={p.to[0]} y2={p.to[1]}>
+      <Stop offset="0" stopColor={p.stops[0]} />
+      <Stop offset="1" stopColor={p.stops[1]} />
+    </LinearGradient>
+  );
   return (
     <Svg width={size} height={size} viewBox="0 0 48 48" accessibilityLabel="DermAI">
-      {fitzpatrick.map((c, i) => (
-        <Path key={c} d={BLADE} fill={c} transform={i ? `rotate(${i * 60} 24 24)` : undefined} />
+      <Defs>
+        {g(logo.leaf, leafId)}
+        {g(logo.head, headId)}
+      </Defs>
+      <Path d={logo.leaf.d} fill={`url(#${leafId})`} />
+      <Path d={logo.head.d} fill={`url(#${headId})`} />
+      {logo.squares.map((q) => (
+        <Rect key={`${q.x}-${q.y}`} x={q.x} y={q.y} width={q.s} height={q.s} rx={q.s * 0.22} fill={q.fill} />
       ))}
-      <Circle cx="24" cy="24" r="5.2" fill="#7B63FF" />
-      <Circle cx="24" cy="24" r="2.2" fill="#E9E4FF" />
     </Svg>
   );
 }
 
-export function Wordmark({ size = 28, color }: { size?: number; color?: string }) {
-  const { colors } = useTheme();
-  return <Text style={{ fontFamily: fonts.display700, fontSize: size, letterSpacing: -size * 0.035, color: color ?? colors.textPrimary }}>dermai</Text>;
+/** "derm" in ink, "AI" in violet (always violet, even in the dermatologist's green theme). */
+export function Wordmark({ size = 28, color, onDark, tagline, center }: { size?: number; color?: string; onDark?: boolean; tagline?: boolean; center?: boolean }) {
+  const { colors, isDark } = useTheme();
+  const dark = onDark ?? isDark;
+  return (
+    <View style={center ? { alignItems: 'center' } : undefined}>
+      <Text style={{ fontFamily: fonts.display800, fontSize: size, lineHeight: size * 1.05, letterSpacing: -size * 0.04, color: color ?? colors.textPrimary }}>
+        derm<Text style={{ color: dark ? '#9B8CFF' : '#5B3DF5' }}>AI</Text>
+      </Text>
+      {tagline ? (
+        <Text style={{ fontFamily: fonts.sans500, fontSize: Math.max(10, size * 0.42), letterSpacing: 0.2, color: dark ? '#B7AEDB' : colors.textSecondary }}>AI Skin Insights</Text>
+      ) : null}
+    </View>
+  );
 }
 
 /* ───────────── Face map: a glowing dot face; zones swell and warm up as a concern grows ───────────── */
@@ -216,7 +240,7 @@ export function ScanSweep({ height, width }: { height: number; width: number }) 
   }, [height, y]);
   return (
     <Animated.View pointerEvents="none" style={{ position: 'absolute', left: width * 0.1, width: width * 0.8, top: -24, height: 26, transform: [{ translateY: y }] }}>
-      <LinearGradient colors={['rgba(140,123,255,0)', 'rgba(140,123,255,0.32)']} style={{ flex: 1 }} />
+      <FadeGradient colors={['rgba(140,123,255,0)', 'rgba(140,123,255,0.32)']} style={{ flex: 1 }} />
       <View style={{ height: 2, borderRadius: 1, backgroundColor: '#DCD4FF', boxShadow: '0 0 10px #8C7BFF' } as ViewStyle} />
     </Animated.View>
   );
@@ -329,7 +353,7 @@ export function ScanPhoto({
       {uri ? (
         <Image source={{ uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
       ) : (
-        <LinearGradient colors={[base, deeper]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: '100%', height: '100%' }} />
+        <FadeGradient colors={[base, deeper]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: '100%', height: '100%' }} />
       )}
       {label ? (
         <View style={{ position: 'absolute', left: 8, bottom: 8, backgroundColor: 'rgba(45,35,80,0.9)', borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3 }}>

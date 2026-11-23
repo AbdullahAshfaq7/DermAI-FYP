@@ -19,17 +19,17 @@ After upgrading Expo, restart with a cleared cache: `npx expo start --clear`.
 
 The app follows the Lumen storyboard (v3): one app, two roles (patient and dermatologist), 44 screens.
 
-**Lumen design in short:** Lamp violet `#5B3DF5` on pearl for patients, Emerald `#0B8A63` for dermatologists (`withRole` swaps the brand colour, so the same components serve both), and Night `#150E26` for the camera, review, analysing and results screens (`NightTheme`). Type is Bricolage Grotesque (display) and Instrument Sans (text). The logo is an aperture of six Fitzpatrick skin tones around a violet lens; the face map is a glowing dot grid. Patient and doctor tabs sit in a floating dock.
+**Lumen design in short:** Lamp violet `#5B3DF5` on pearl for patients, Emerald `#0B8A63` for dermatologists (`withRole` swaps the brand colour, so the same components serve both), and Night `#150E26` for the camera, review, analysing and results screens (`NightTheme`). Type is Bricolage Grotesque (display) and Instrument Sans (text). The logo is a head in profile whose thoughts dissolve into skin-tone pixels, with a violet "derm**AI**" wordmark (drawn from `assets/logo.json`, so the app and the icon script share one source); the face map is a glowing dot grid. Patient and doctor tabs sit in a floating dock.
 
 | Folder | What lives there |
 | --- | --- |
-| `app/` | Routes. Getting started: `welcome`, `role`, `sign-up`, `consent`, `log-in`. Skin profile: `setup/`. Patient tabs: `(patient)/` (home, routine, care, me). Scan flow: `scan/` (guide, camera, review, analyzing, results, concern, concerns). Care: `ai-chat`, `doctors/`, `book/`, `booked/`, `thread/`. Me: `notifications`, `settings`, `privacy`, `personal`, `history`, `saved`, `routine-preferences`, `appointments`, `skin-profile`, `about`, `progress`, `step/`. Dermatologist: `derm-setup/`, `(derm)/` (today, cases, schedule, messages, account), `case/`, `assess/`, `availability`, `inbox/`, `earnings` |
+| `app/` | Routes. Getting started: `welcome` (what DermAI does, then patient or dermatologist), `sign-up`, `consent`, `log-in`. Skin profile: `setup/`. Patient tabs: `(patient)/` (home, routine, care, me). Scan flow: `scan/` (guide, camera, review, analyzing, results, concern, concerns). Care: `ai-chat`, `doctors/`, `book/`, `booked/`, `thread/`. Me: `notifications`, `settings`, `privacy`, `personal`, `history`, `saved`, `routine-preferences`, `appointments`, `skin-profile`, `about`, `progress`, `step/`. Dermatologist: `derm-setup/`, `(derm)/` (today, cases, schedule, messages, account), `case/`, `assess/`, `availability`, `inbox/`, `earnings` |
 | `components/` | `ui/kit.tsx` (buttons, cards, lists, fields, pills, chips), `ui/Icon.tsx`, `visual.tsx` (logo, face map, trend line, photo compare), `chat.tsx`, `derm.tsx`, `TabBar.tsx` |
 | `theme/` | Design tokens from `design.md` (colours, type, spacing) and `ThemeProvider` (light/dark/system, saved on device) |
 | `store/` | App state from the API (`AppStore.tsx`): async actions, optimistic toggles with rollback, 15-second refresh, offline cache |
 | `data/` | Shared types and static content (concerns, routine library, tones, pickers) |
 | `lib/` | `api.ts` (API client, tokens, refresh), `localPhotos.ts` (scan photos kept on the phone), `reminders.ts` (on-device notifications), `routine.ts` (routine builder incl. doctor steps and pauses, mirrored in `backend/app/routine.py`), formatting, photo and export helpers |
-| `assets/` | Icons, splash, images. Redraw the icon and splash with `cd ../backend && uv run python scripts/make_brand_assets.py` |
+| `assets/` | Icons, splash, images. Edit the logo in `logo.json`, then redraw the icon, favicon and splash with `cd ../backend && uv run python scripts/make_brand_assets.py` |
 
 ## Backend
 

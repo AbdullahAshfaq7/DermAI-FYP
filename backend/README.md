@@ -26,6 +26,10 @@ The phone reaches the API through the dev machine's address on port 8000 (worked
 | Patients in Dr. Sana's inbox | `bilal@ / zara@ / omar@ / nida@ / hassan@ / farah@demo.dermai.pk` |
 | Admin (password `admin1234`) | `admin@dermai.pk` |
 
+## Admin portal
+
+Admins sign in from the app (Welcome → **Log in as admin**, or the regular log in) and land on `/admin`. The portal covers: an overview (accounts, doctors, bookings, cases, scans, revenue), every account (search, filter, edit details, create, set password, sign out everywhere, suspend/restore, delete), PMDC verification (documents, verify, send back, revoke, edit profile and fees), bookings (cancel any time, mark paid/refunded/due), cases with their messages, scan scores (photos stay on phones), announcements to patients/doctors/everyone, and an audit log of every admin change. Opening a case's messages is itself logged. Guards: an admin can't suspend or delete themself or the last active admin; suspending or revoking a doctor cancels their upcoming visits and tells patients. Endpoints live under `/admin` (see `app/routers/admin.py`); tests in `tests/test_admin.py`.
+
 ## Admin commands
 
 ```bash
@@ -56,13 +60,13 @@ Photos are phone-first. `POST /scans` analyses the upload and deletes the file; 
 | `app/main.py` | App, error format, signed file links, daily photo purge |
 | `app/models.py` | Tables |
 | `app/state.py` | Builds the `AppState` the app renders (same shape as `mobile/store/state.ts`) |
-| `app/routers/` | `auth`, `me` (profile, settings, routine, saved, notifications, AI chat, export), `scans`, `booking` (directory, slots, appointments, threads), `derm` (onboarding, cases, assessments, schedule, admin) |
+| `app/routers/` | `auth`, `me` (profile, settings, routine, saved, notifications, AI chat, export), `scans`, `booking` (directory, slots, appointments, threads), `derm` (onboarding, cases, assessments, schedule), `admin` (admin portal) |
 | `app/analysis/` | Photo quality checks and the stand-in skin analyzer (swap for the ONNX model) |
 | `app/slots.py` | Bookable slots from a doctor's real availability |
 | `app/routine.py` | Routine builder, mirrored from the app, used for streaks and doctor changes |
 | `app/ai_rules.py` | Ask DermAI replies (rules; the LLM is a next step) |
 | `app/seed.py`, `app/seed_data.json` | Demo data. `scripts/export_seed.mts` copies the app's content (concerns, routine library) into the JSON |
 | `migrations/` | Alembic migrations (`uv run alembic upgrade head`) |
-| `scripts/make_brand_assets.py` | Redraws the app icon, Android foreground, favicon and splash from the aperture logo |
+| `scripts/make_brand_assets.py` | Redraws the app icon, Android foreground, favicon and splash from the logo in `mobile/assets/logo.json` |
 
 Deferred integrations (LLM, push, email, Google, payments, video) are listed in [`../docs/NEXT.md`](../docs/NEXT.md).

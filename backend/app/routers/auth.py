@@ -122,6 +122,9 @@ def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
     user = db.scalar(select(User).where(User.email == email))
     if not user or not check_password(body.password, user.password_hash):
         raise ApiError(401, "bad_credentials", "That email and password don't match.")
+    if user.suspended:
+        raise ApiError(403, "account_suspended", "This account has been suspended. Contact DermAI support.")
+    user.last_login_at = utcnow()
     tokens = issue_tokens(db, user)
     return respond(db, user, request, **tokens)
 
@@ -132,7 +135,7 @@ def refresh(body: RefreshIn, db: Session = Depends(get_db)):
     if not row or row.revoked or row.expires_at < utcnow():
         raise ApiError(401, "bad_refresh", "Your session ended. Please sign in again.")
     user = db.get(User, row.user_id)
-    if not user:
+    if not user or user.suspended:
         raise ApiError(401, "bad_refresh", "Your session ended. Please sign in again.")
     row.revoked = True
     tokens = issue_tokens(db, user)
@@ -218,7 +221,7 @@ def delete_user_files(db: Session, user: User) -> None:
     keys += [u.photo_key for u in db.scalars(select(ScanUpload).where(ScanUpload.user_id == user.id))]
     thread_q = select(Thread.id).where(Thread.patient_id == user.id)
     if user.derm:
-        keys += [user.derm.certificate_key, user.derm.cnic_key]
+        keys += [user.derm.certificate_key, user.derm.cnic_key, user.derm.degree_key]
         thread_q = select(Thread.id).where((Thread.patient_id == user.id) | (Thread.derm_id == user.derm.id))
     keys += [m.attachment_key for m in db.scalars(select(Message).where(Message.thread_id.in_(thread_q)))]
     for k in keys:
@@ -230,6 +233,13 @@ def delete_account(body: DeleteIn, user: User = Depends(current_user), db: Sessi
     user = db.merge(user)
     if not check_password(body.password, user.password_hash):
         raise ApiError(400, "bad_password", "That password is wrong.")
+    remove_user(db, user)
+    db.commit()
+    return {"ok": True}
+
+
+def remove_user(db: Session, user: User) -> None:
+    """Deletes the account with its files; a doctor's patients with upcoming visits are told."""
     delete_user_files(db, user)
     if user.derm:
         # Their bookings, threads and cases go with the account; tell patients with upcoming visits.
@@ -240,5 +250,3 @@ def delete_account(body: DeleteIn, user: User = Depends(current_user), db: Sessi
             notify(db, pid, "event-busy", f"{user.name} left DermAI", "Your upcoming visit was cancelled. You won't be charged.", "/appointments")
         db.execute(Case.__table__.delete().where(Case.derm_id == user.derm.id))
     db.delete(user)
-    db.commit()
-    return {"ok": True}

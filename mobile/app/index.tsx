@@ -32,9 +32,9 @@ export default function Splash() {
         <View style={{ alignItems: 'center', gap: space.lg }}>
           <View style={{ alignItems: 'center', justifyContent: 'center' }}>
             <View style={{ position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(123,99,255,0.18)', boxShadow: '0 0 80px 40px rgba(123,99,255,0.22)' } as object} />
-            <LogoMark size={96} />
+            <LogoMark size={112} />
           </View>
-          <Wordmark size={38} color={nightColors.textPrimary} />
+          <Wordmark size={40} color={nightColors.textPrimary} onDark />
           <Txt variant="body" style={{ color: nightColors.textSecondary }}>
             Every skin, seen clearly.
           </Txt>

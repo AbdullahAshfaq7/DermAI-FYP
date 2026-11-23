@@ -5,6 +5,8 @@ import type { AppState } from '@/store/state';
 /** Where a person should land, given what they've finished so far. */
 export function homeFor(s: AppState): Href {
   if (!s.session) return '/welcome';
+  // Admins skip patient consent and onboarding: they manage the platform, not their own skin.
+  if (s.session.role === 'admin') return '/admin';
   if (!s.consent) return '/consent';
   if (s.session.role === 'patient') return s.profile.done ? '/home' : '/setup/tone';
   if (s.derm.step === 'profile') return '/derm-setup/profile';

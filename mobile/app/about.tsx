@@ -11,7 +11,7 @@ export default function About() {
     <Screen header={<TopBar title="Help and about" />}>
       <View style={{ alignItems: 'center', gap: space.sm, marginVertical: space.md }}>
         <LogoMark size={64} />
-        <Wordmark size={26} />
+        <Wordmark size={30} tagline center />
         <Txt variant="small" color="secondary">
           Version {Constants.expoConfig?.version ?? '1.0.0'}
         </Txt>

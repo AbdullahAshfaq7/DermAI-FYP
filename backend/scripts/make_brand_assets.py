@@ -1,46 +1,23 @@
-"""Draw the Lumen app icon, Android foreground, favicon and splash from the aperture mark.
+"""Draw the app icon, Android foreground, favicon and splash from the DermAI mark.
 
-The geometry matches `LogoMark` in mobile/components/visual.tsx: six blades in the
-Fitzpatrick tones around a violet lens, on a 48-unit grid.
+The mark comes from mobile/assets/logo.json, the same data the app draws with.
 
     cd backend && uv run python scripts/make_brand_assets.py
 """
 
-import math
 from pathlib import Path
 
+from brand_mark import SS, draw_mark
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = Path(__file__).resolve().parents[2] / "mobile"
 OUT = ROOT / "assets" / "images" / "branding"
-FONT = ROOT / "node_modules/@expo-google-fonts/bricolage-grotesque/700Bold/BricolageGrotesque_700Bold.ttf"
+FONT = ROOT / "node_modules/@expo-google-fonts/bricolage-grotesque/800ExtraBold/BricolageGrotesque_800ExtraBold.ttf"
+FONT_SANS = ROOT / "node_modules/@expo-google-fonts/instrument-sans/500Medium/InstrumentSans_500Medium.ttf"
 
 NIGHT = (0x15, 0x0E, 0x26)
 VIOLET = (0x7B, 0x63, 0xFF)
-LENS_CORE = (0xE9, 0xE4, 0xFF)
-TONES = ["#F5DCCB", "#EBC2A2", "#D4A07A", "#A8714C", "#7A4B31", "#4A2E22"]
-SS = 4  # supersampling
-
-
-def blade(cx: float, cy: float, unit: float, rot: float) -> list[tuple[float, float]]:
-    """One blade: outer arc r=22 from -118 to -62 degrees, inner arc r=9 back from -42 to -98."""
-    pts = []
-    for i in range(41):
-        a = math.radians(-118 + 56 * i / 40 + rot)
-        pts.append((cx + 22 * unit * math.cos(a), cy + 22 * unit * math.sin(a)))
-    for i in range(41):
-        a = math.radians(-42 - 56 * i / 40 + rot)
-        pts.append((cx + 9 * unit * math.cos(a), cy + 9 * unit * math.sin(a)))
-    return pts
-
-
-def draw_mark(img: Image.Image, cx: float, cy: float, size: float) -> None:
-    d = ImageDraw.Draw(img)
-    u = size / 48
-    for i, tone in enumerate(TONES):
-        d.polygon(blade(cx, cy, u, i * 60), fill=tone)
-    for r, c in ((5.2, VIOLET), (2.2, LENS_CORE)):
-        d.ellipse([cx - r * u, cy - r * u, cx + r * u, cy + r * u], fill=c)
+AI_VIOLET = (0x9B, 0x8C, 0xFF)
 
 
 def glow(size: tuple[int, int], cx: float, cy: float, radius: float, alpha: int) -> Image.Image:
@@ -54,7 +31,7 @@ def canvas(w: int, h: int, mark: float, mark_y: float | None = None, bg=NIGHT, h
     img = Image.new("RGBA", (W, H), (*bg, 255) if bg else (0, 0, 0, 0))
     cy = (mark_y if mark_y is not None else h / 2) * SS
     if halo:
-        img = Image.alpha_composite(img, glow((W, H), W / 2, cy, mark * SS * 0.62, 120))
+        img = Image.alpha_composite(img, glow((W, H), W / 2, cy, mark * SS * 0.6, 110))
     draw_mark(img, W / 2, cy, mark * SS)
     return img
 
@@ -63,28 +40,35 @@ def save(img: Image.Image, name: str, w: int, h: int, rgb=True) -> None:
     out = img.resize((w, h), Image.LANCZOS)
     if rgb:
         out = out.convert("RGB")
-    path = OUT / name if not name.startswith("../") else (OUT / name).resolve()
+    path = (OUT / name).resolve()
     out.save(path, optimize=True)
     print("wrote", path.relative_to(ROOT), out.size)
 
 
 def main() -> None:
     # iOS / store icon: full bleed, no transparency.
-    save(canvas(1024, 1024, 640), "app-icon-square.png", 1024, 1024)
+    save(canvas(1024, 1024, 620), "app-icon-square.png", 1024, 1024)
     # Web favicon.
-    save(canvas(512, 512, 340), "app-icon.png", 512, 512)
+    save(canvas(512, 512, 330), "app-icon.png", 512, 512)
     # Android adaptive foreground: transparent, mark inside the 66% safe zone. Background colour is in app.json.
-    save(canvas(1024, 1024, 520, bg=None, halo=False), "adaptive-icon-foreground-square.png", 1024, 1024, rgb=False)
+    save(canvas(1024, 1024, 500, bg=None, halo=False), "adaptive-icon-foreground-square.png", 1024, 1024, rgb=False)
 
-    # Splash (resizeMode cover): mark and wordmark centred, like the in-app night splash.
-    w, h = 1284, 2778
-    img = canvas(w, h, 300, mark_y=h / 2 - 90)
-    font = ImageFont.truetype(str(FONT), 112 * SS)
+    # Splash logo: the lockup on a transparent square. The splash plugin centres it at a set width
+    # on the Night background colour from app.json, so nothing else belongs in the image.
+    n = 1200
+    img = canvas(n, n, 600, mark_y=380, bg=None, halo=False)
     d = ImageDraw.Draw(img)
-    text = "DermAI"
-    box = d.textbbox((0, 0), text, font=font)
-    d.text(((w * SS - (box[2] - box[0])) / 2 - box[0], (h / 2 + 120) * SS), text, font=font, fill=(255, 255, 255, 255))
-    save(img, "../../Splash-screen.png", w, h)
+    font = ImageFont.truetype(str(FONT), 230 * SS)
+    derm, ai = "derm", "AI"
+    wd, wa = d.textlength(derm, font=font), d.textlength(ai, font=font)
+    x0 = (n * SS - (wd + wa)) / 2
+    y0 = 720 * SS
+    d.text((x0, y0), derm, font=font, fill=(255, 255, 255, 255))
+    d.text((x0 + wd, y0), ai, font=font, fill=(*AI_VIOLET, 255))
+    tag = ImageFont.truetype(str(FONT_SANS), 84 * SS)
+    text = "AI Skin Insights"
+    d.text(((n * SS - d.textlength(text, font=tag)) / 2, y0 + 300 * SS), text, font=tag, fill=(0xB7, 0xAE, 0xDB, 255))
+    save(img, "splash-logo.png", n, n, rgb=False)
 
 
 if __name__ == "__main__":

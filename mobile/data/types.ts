@@ -104,7 +104,7 @@ export interface Appointment {
   fee: number;
   paymentMethod?: PaymentMethod;
   paymentStatus?: string;
-  cancelledBy?: 'patient' | 'doctor' | null;
+  cancelledBy?: 'patient' | 'doctor' | 'admin' | null;
   rating?: number | null;
   caseId?: string | null;
 }

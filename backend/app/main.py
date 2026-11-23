@@ -11,7 +11,7 @@ from app import db as dbmod
 from app import storage
 from app.config import get_settings
 from app.errors import ApiError
-from app.routers import auth, booking, derm, me, scans
+from app.routers import admin, auth, booking, derm, me, scans
 
 log = logging.getLogger("dermai")
 
@@ -63,7 +63,7 @@ def create_app(run_housekeeping: bool = True) -> FastAPI:
             raise ApiError(404, "not_found", "That file wasn't found.")
         return FileResponse(path, headers={"Cache-Control": "private, max-age=3600"})
 
-    for r in (auth.router, me.router, scans.router, booking.router, derm.router, derm.admin):
+    for r in (auth.router, me.router, scans.router, booking.router, derm.router, admin.router):
         app.include_router(r)
     return app
 

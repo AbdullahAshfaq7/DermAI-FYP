@@ -93,6 +93,7 @@ export default function Booked() {
           {cancelled ? 'Visit cancelled' : done ? `Visit with ${drShort(d.name)}` : isMessage ? `Sent to ${drShort(d.name)}` : "You're booked"}
         </Txt>
         {cancelled && appt.cancelledBy === 'doctor' ? <StatusPill label={`Cancelled by ${drShort(d.name)}`} tone="act" /> : null}
+        {cancelled && appt.cancelledBy === 'admin' ? <StatusPill label="Cancelled by DermAI support" tone="act" /> : null}
         {!cancelled && !done ? (
           <Txt variant="body" color="secondary" align="center">
             {sharedScan

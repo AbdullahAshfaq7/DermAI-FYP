@@ -24,7 +24,7 @@ export interface TabSpec {
  * Lumen floating dock: a rounded bar above the screen edge, with a large Scan button in thumb reach
  * for patients. Screens under it add `dockClearance` bottom padding (Screen's `dock` prop).
  */
-export function TabBar({ state, emitter, navigateToTab, tabs, role }: BottomTabBarProps & { tabs: TabSpec[]; role: 'patient' | 'dermatologist' }) {
+export function TabBar({ state, emitter, navigateToTab, tabs, role }: BottomTabBarProps & { tabs: TabSpec[]; role: 'patient' | 'dermatologist' | 'admin' }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const items = tabs.map((t) => ({ ...t, index: state.routes.findIndex((r) => r.name === t.name) }));

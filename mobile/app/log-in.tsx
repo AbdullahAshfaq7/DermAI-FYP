@@ -15,7 +15,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 /** Log in (linked from A2). */
 export default function LogIn() {
   const { colors } = useTheme();
-  const { logIn, logOut } = useActions();
+  const { logIn } = useActions();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [show, setShow] = useState(false);
@@ -35,11 +35,6 @@ export default function LogIn() {
     setBusy(true);
     try {
       const s = await logIn(e.trim(), p);
-      if (s.session?.role === 'admin') {
-        await logOut();
-        setError('Admin accounts use the admin tools, not the app.');
-        return;
-      }
       resetTo(homeFor(s));
     } catch (err) {
       setError(errorMessage(err));
@@ -68,6 +63,12 @@ export default function LogIn() {
       />
       <Txt variant="smallStrong" color="brand" onPress={() => router.push({ pathname: '/forgot-password', params: { email: email.trim() } })}>
         Forgot password?
+      </Txt>
+      <Txt variant="small" color="secondary">
+        DermAI staff?{' '}
+        <Txt variant="smallStrong" color="brand" onPress={() => router.replace('/admin-login')}>
+          Log in as admin
+        </Txt>
       </Txt>
       {__DEV__ ? (
         <Card tone="muted">

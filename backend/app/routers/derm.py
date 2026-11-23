@@ -1,4 +1,4 @@
-"""Dermatologist onboarding, cases, assessments, schedule, plus the admin verification queue."""
+"""Dermatologist onboarding, cases, assessments and schedule."""
 
 import re
 
@@ -7,19 +7,18 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import storage
-from app.common import In, base_url, notify, respond
+from app.common import In, notify, respond
 from app.db import get_db
 from app.errors import ApiError, not_found
 from app.models import AiLabel, Appointment, Blocked, Case, Dermatologist, Message, Thread, User
 from app.routine import steps_matching
-from app.security import admin_user, derm_user
+from app.security import derm_user
 from app.slots import validate_availability
 from app.state import prefs_of, settings_of
 from app.timeutil import iso, parse_iso, utcnow
 from app.uploads import read_upload, store
 
 router = APIRouter(prefix="/derm", tags=["dermatologist"])
-admin = APIRouter(prefix="/admin", tags=["admin"])
 
 SPECIALTIES = {"Acne", "Pigmentation", "Melasma", "Rosacea", "Eczema", "Psoriasis", "Hair and scalp", "Scars", "Moles and skin checks", "Paediatric", "Redness", "Sensitivity"}
 PMDC_RE = re.compile(r"^\d{4,6}-[A-Z]$")
@@ -377,30 +376,7 @@ def set_status(case_id: str, body: StatusIn, request: Request, user: User = Depe
     return respond(db, db.merge(user), request)
 
 
-# ───────────── Admin: PMDC verification (FR-26) ─────────────
-
-
-def derm_summary(d: Dermatologist, base: str) -> dict:
-    return {
-        "id": d.id,
-        "name": d.user.name,
-        "email": d.user.email,
-        "pmdc": d.pmdc,
-        "qualification": d.qualification,
-        "clinic": d.clinic,
-        "city": d.city,
-        "status": d.status,
-        "submittedAt": iso(d.submitted_at),
-        "certificate": storage.url_for(d.certificate_key, base),
-        "cnic": storage.url_for(d.cnic_key, base),
-        "degree": storage.url_for(d.degree_key, base),
-    }
-
-
-@admin.get("/derms")
-def admin_list(request: Request, status: str = "pending", user: User = Depends(admin_user), db: Session = Depends(get_db)):
-    rows = db.scalars(select(Dermatologist).where(Dermatologist.status == status))
-    return {"derms": [derm_summary(d, base_url(request)) for d in rows]}
+# ───────────── PMDC verification (FR-26); the endpoints are in routers/admin.py ─────────────
 
 
 def approve_derm(db: Session, d: Dermatologist) -> None:
@@ -413,27 +389,3 @@ def approve_derm(db: Session, d: Dermatologist) -> None:
 def reject_derm(db: Session, d: Dermatologist, note: str) -> None:
     d.status, d.review_note = "rejected", note
     notify(db, d.user_id, "error-outline", "Verification needs changes", note or "Check your PMDC details and documents.", "/derm-setup/credentials")
-
-
-@admin.post("/derms/{derm_id}/approve")
-def admin_approve(derm_id: str, user: User = Depends(admin_user), db: Session = Depends(get_db)):
-    d = db.get(Dermatologist, derm_id)
-    if not d:
-        raise not_found("That doctor")
-    approve_derm(db, d)
-    db.commit()
-    return {"ok": True}
-
-
-class RejectIn(In):
-    note: str = ""
-
-
-@admin.post("/derms/{derm_id}/reject")
-def admin_reject(derm_id: str, body: RejectIn, user: User = Depends(admin_user), db: Session = Depends(get_db)):
-    d = db.get(Dermatologist, derm_id)
-    if not d:
-        raise not_found("That doctor")
-    reject_derm(db, d, body.note[:500])
-    db.commit()
-    return {"ok": True}

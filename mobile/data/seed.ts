@@ -257,7 +257,7 @@ export const FINDING_SUGGESTIONS = ['Nodulocystic acne', 'Hormonal pattern', 'In
 export const ALLERGEN_SUGGESTIONS = ['Fragrance', 'Benzoyl peroxide', 'Retinol', 'Salicylic acid', 'Alcohol', 'Essential oils', 'Lanolin', 'Vitamin C', 'Glycolic acid', 'Coconut oil'];
 
 /** Seeded demo accounts (backend/app/seed.py). Shown on the log-in screen in development builds only. */
-export const DEMO_ACCOUNTS = { patient: 'ayesha@mail.com', doctor: 'sana@clinic.pk', password: 'demo1234' } as const;
+export const DEMO_ACCOUNTS = { patient: 'ayesha@mail.com', doctor: 'sana@clinic.pk', password: 'demo1234', admin: 'admin@dermai.pk', adminPassword: 'admin1234' } as const;
 
 export const SERVICE_META: Record<ServiceType, { title: string; short: string; icon: 'videocam' | 'location-on' | 'chat' }> = {
   video: { title: 'Video visit', short: 'Video', icon: 'videocam' },

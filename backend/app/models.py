@@ -36,6 +36,10 @@ class User(Base):
     profile: Mapped[dict] = mapped_column(JSON, default=dict)
     settings: Mapped[dict] = mapped_column(JSON, default=dict)
     routine_prefs: Mapped[dict] = mapped_column(JSON, default=dict)
+    # Set by an admin: a suspended account can't sign in and its tokens stop working.
+    suspended: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    suspended_reason: Mapped[str] = mapped_column(String(300), default="", server_default="")
+    last_login_at: Mapped[datetime | None] = mapped_column(TS, nullable=True)
     created_at: Mapped[datetime] = mapped_column(TS, default=now)
 
     derm: Mapped["Dermatologist | None"] = relationship(back_populates="user", uselist=False, cascade="all, delete-orphan")
@@ -276,3 +280,18 @@ class AiLabel(Base):
     rating: Mapped[str] = mapped_column(String(10))
     findings: Mapped[list] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(TS, default=now)
+
+
+class AdminLog(Base):
+    """Every change an admin makes, and every time an admin opens private case messages."""
+
+    __tablename__ = "admin_log"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("log"))
+    # Kept when the admin account is removed, so the trail survives.
+    admin_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    admin_name: Mapped[str] = mapped_column(String(120), default="")
+    action: Mapped[str] = mapped_column(String(60))
+    target_type: Mapped[str] = mapped_column(String(30), default="")
+    target_id: Mapped[str] = mapped_column(String(40), default="")
+    detail: Mapped[str] = mapped_column(Text, default="")
+    at: Mapped[datetime] = mapped_column(TS, default=now, index=True)

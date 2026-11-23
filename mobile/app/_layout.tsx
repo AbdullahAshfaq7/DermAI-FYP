@@ -31,6 +31,7 @@ function Navigator() {
         <Stack.Screen name="index" options={{ animation: 'fade' }} />
         <Stack.Screen name="(patient)" options={{ animation: 'fade' }} />
         <Stack.Screen name="(derm)" options={{ animation: 'fade' }} />
+        <Stack.Screen name="admin" options={{ animation: 'fade' }} />
         <Stack.Screen name="scan" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
         <Stack.Screen name="booked/[id]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="assess/[id]" options={{ presentation: 'modal' }} />

@@ -79,6 +79,8 @@ def current_user(authorization: str | None = Header(default=None), db: Session =
     user = db.get(User, claims.get("sub"))
     if not user or user.token_version != claims.get("tv"):
         raise ApiError(401, "bad_token", "Please sign in again.")
+    if user.suspended:
+        raise ApiError(401, "account_suspended", "This account has been suspended. Contact DermAI support.")
     return user
 
 
