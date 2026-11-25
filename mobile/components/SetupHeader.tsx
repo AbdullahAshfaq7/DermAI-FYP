@@ -5,7 +5,13 @@ import { IconButton, StepBar, Txt } from '@/components/ui/kit';
 import { back } from '@/lib/nav';
 import { space } from '@/theme/tokens';
 
-/** Progress bar, back and skip for the three skin-profile steps (B1 to B3) and doctor sign-up (G). */
+/** Steps in the patient skin quiz: tone, feel, reactions, profile card. */
+export const QUIZ_STEPS = 4;
+
+/** Quiz answers show their selection for a moment before moving on. */
+export const ADVANCE_MS = 260;
+
+/** Progress bar, back and skip for the patient skin quiz (B1 to B4) and doctor sign-up (G). */
 export function SetupHeader({
   step,
   total = 3,

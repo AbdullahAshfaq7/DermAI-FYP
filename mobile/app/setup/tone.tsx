@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { SetupHeader } from '@/components/SetupHeader';
+import { ADVANCE_MS, QUIZ_STEPS, SetupHeader } from '@/components/SetupHeader';
 import { Icon } from '@/components/ui/Icon';
 import { Banner, Button, ErrorBanner, Screen, Txt } from '@/components/ui/kit';
 import { FITZ_ROMAN } from '@/data/seed';
@@ -14,7 +14,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { space } from '@/theme/tokens';
 
 const BURN = ['Always burns', 'Burns easily', 'Sometimes burns', 'Rarely burns', 'Very rarely', 'Never burns'];
-const NOTE = [
+export const TONE_NOTE = [
   'On type I skin, redness shows clearly as pink. The scan reads small changes.',
   'On type II skin, redness shows as pink and sun marks appear quickly.',
   'On type III skin, healed spots can leave brown marks. The scan watches for them.',
@@ -23,7 +23,7 @@ const NOTE = [
   'On type VI skin, redness and irritation look darker, not pink. The scan reads it that way.',
 ];
 
-/** B1 Skin tone: the Fitzpatrick scale in plain words, with how it changes the reading. */
+/** B1 Skin tone: the Fitzpatrick scale in plain words. In the quiz one tap saves and moves on; editing keeps Save. */
 export default function SkinTone() {
   const { colors } = useTheme();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
@@ -32,18 +32,27 @@ export default function SkinTone() {
   const { busy, error, run } = useSubmit();
   const [tone, setTone] = useState<number | null>(profile.tone);
 
-  const save = async () => {
-    if ((await run(() => updateProfile({ tone }))) === undefined) return;
+  const save = async (value: number | null = tone) => {
+    if ((await run(() => updateProfile({ tone: value }))) === undefined) return;
     if (edit) back();
-    else router.push('/setup/type');
+    else router.push('/setup/feel');
+  };
+  const pick = (i: number) => {
+    setTone(i);
+    if (!edit && !busy) setTimeout(() => void save(i), ADVANCE_MS);
   };
 
   return (
     <Screen
       edges={['top']}
-      header={<SetupHeader step={1} editing={!!edit} />}
-      footer={<Button label={edit ? 'Save' : 'Continue'} disabled={tone === null} loading={busy} onPress={() => void save()} />}>
+      header={<SetupHeader step={1} total={QUIZ_STEPS} editing={!!edit} />}
+      footer={edit ? <Button label="Save" disabled={tone === null} loading={busy} onPress={() => void save()} /> : undefined}>
       <Txt variant="display">Which looks most like your skin?</Txt>
+      {edit ? null : (
+        <Txt variant="body" color="secondary">
+          Redness and marks look different on deeper skin, so the scan needs to know.
+        </Txt>
+      )}
       <ErrorBanner error={error} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: space.md, columnGap: space.sm }}>
         {BURN.map((burn, i) => {
@@ -51,7 +60,7 @@ export default function SkinTone() {
           return (
             <Pressable
               key={burn}
-              onPress={() => setTone(i)}
+              onPress={() => pick(i)}
               accessibilityRole="radio"
               accessibilityState={{ selected }}
               accessibilityLabel={`Type ${FITZ_ROMAN[i]}, ${burn}`}
@@ -73,7 +82,7 @@ export default function SkinTone() {
           );
         })}
       </View>
-      <Banner tone="peach" icon="info-outline" text={tone == null ? 'Pick the tone nearest your inner arm, away from the sun. Redness and marks look different on deeper skin, so the scan needs to know.' : NOTE[tone]} />
+      <Banner tone="peach" icon="info-outline" text={tone == null || !edit ? 'Pick the tone nearest your inner arm, away from the sun.' : TONE_NOTE[tone]} />
     </Screen>
   );
 }

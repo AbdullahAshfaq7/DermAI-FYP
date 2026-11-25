@@ -3,18 +3,20 @@ import { useState } from 'react';
 import { Alert, Pressable, View } from 'react-native';
 
 import { Icon } from '@/components/ui/Icon';
-import { Button, ErrorBanner, Field, Screen, TopBar, Txt } from '@/components/ui/kit';
+import { Button, ErrorBanner, Field, Screen, Tick, TopBar, Txt } from '@/components/ui/kit';
 import { errorMessage } from '@/lib/api';
-import { useActions } from '@/store/AppStore';
+import { useActions, useApp } from '@/store/AppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { space } from '@/theme/tokens';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-/** A4 Create account */
+/** A4 Create account. Patients confirm their age here and go straight into the skin quiz; doctors go on to consent. */
 export default function SignUp() {
   const { colors } = useTheme();
-  const { signUp } = useActions();
+  const { signUp, giveConsent } = useActions();
+  const patient = (useApp().pendingRole ?? 'patient') === 'patient';
+  const [adult, setAdult] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -28,7 +30,7 @@ export default function SignUp() {
     email: !EMAIL.test(email.trim()) ? 'Enter an email like name@mail.com.' : null,
     password: password.length < 8 || !/\d/.test(password) ? 'At least 8 characters with one number.' : null,
   };
-  const valid = !errors.name && !errors.email && !errors.password;
+  const valid = !errors.name && !errors.email && !errors.password && (!patient || adult);
 
   const submit = async () => {
     setTried(true);
@@ -37,7 +39,17 @@ export default function SignUp() {
     setBusy(true);
     try {
       await signUp(name.trim(), email.trim().toLowerCase(), password);
-      router.replace('/consent');
+      if (!patient) {
+        router.replace('/consent');
+        return;
+      }
+      // The account exists now; if consent fails to save, the consent screen asks again rather than this form.
+      try {
+        await giveConsent(true, false);
+        router.replace('/setup/tone');
+      } catch {
+        router.replace('/consent');
+      }
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -48,7 +60,7 @@ export default function SignUp() {
   return (
     <Screen
       keyboard
-      header={<TopBar right={<Txt variant="small" color="secondary">2 of 3</Txt>} />}
+      header={<TopBar right={patient ? null : <Txt variant="small" color="secondary">2 of 3</Txt>} />}
       footer={
         <>
           <Button label="Create account" loading={busy} onPress={() => void submit()} />
@@ -86,8 +98,28 @@ export default function SignUp() {
           </Pressable>
         }
       />
+      {patient ? (
+        <Pressable
+          onPress={() => setAdult((v) => !v)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: adult }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.xs }}>
+          <Tick on={adult} size={24} />
+          <View style={{ flex: 1 }}>
+            <Txt variant="smallStrong">I&apos;m 18 or older, or have a parent&apos;s consent</Txt>
+            {tried && !adult ? (
+              <Txt variant="caption" color="act">
+                Tick this to continue.
+              </Txt>
+            ) : null}
+          </View>
+        </Pressable>
+      ) : null}
       <Txt variant="caption" color="muted">
-        By continuing you agree to the Terms and Privacy Policy.
+        By continuing you agree to the Terms and Privacy Policy.{' '}
+        <Txt variant="caption" color="brand" onPress={() => router.push('/about')}>
+          Read them
+        </Txt>
       </Txt>
     </Screen>
   );
