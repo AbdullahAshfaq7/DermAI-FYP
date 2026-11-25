@@ -1,9 +1,10 @@
 """Demo data from the storyboard (app/seed_data.json, exported from mobile/data/seed.ts).
 
-Dates are written around 15 Nov 2026; they are shifted forward by whole weeks so the demo stays
-current and visits keep their weekday."""
+Dates are written around Sunday 15 Nov 2026, the storyboard's "today". They are shifted forward by
+whole days so today always plays that role: the latest scan is a few days old and Monday's visits are
+tomorrow. (Shifting by whole weeks kept weekdays but let today drift up to six days past the
+storyboard, so the upcoming visits had already happened for most of the week.)"""
 
-import math
 from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
@@ -43,9 +44,9 @@ OTHER_PATIENTS = {
 DOCTOR_EMAILS = {"dr-sana": "sana@clinic.pk", "dr-umar": "umar@clinic.pk", "dr-hira": "hira@clinic.pk"}
 
 
-def week_shift() -> timedelta:
-    days = (utcnow() - ANCHOR).total_seconds() / 86400
-    return timedelta(days=max(0, math.floor(days / 7) * 7))
+def day_shift() -> timedelta:
+    """Whole local days from the storyboard's today to the real one."""
+    return timedelta(days=max(0, (today_local() - ANCHOR.date()).days))
 
 
 def reset(db: Session) -> None:
@@ -56,7 +57,7 @@ def reset(db: Session) -> None:
 def seed(db: Session) -> dict:
     s = get_settings()
     d = data()
-    shift = week_shift()
+    shift = day_shift()
     at = lambda iso_: parse_iso(iso_) + shift  # noqa: E731
     pw = hash_password(s.demo_password)
 

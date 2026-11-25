@@ -898,6 +898,16 @@ export function EmptyState({ icon, title, body, action, onAction }: { icon: Icon
   );
 }
 
+/** Centred spinner for a screen that is still fetching what it shows. */
+export function LoadingState({ label = 'Loading' }: { label?: string }) {
+  const { colors } = useTheme();
+  return (
+    <View style={{ alignItems: 'center', paddingVertical: space.xxl }} accessibilityLabel={label} accessibilityRole="progressbar">
+      <ActivityIndicator color={colors.brandDeep} />
+    </View>
+  );
+}
+
 /** A form or request error, announced to screen readers. Renders nothing when there is no error. */
 export function ErrorBanner({ error }: { error?: string | null }) {
   if (!error) return null;

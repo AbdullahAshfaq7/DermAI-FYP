@@ -4,12 +4,12 @@ import { Alert, View } from 'react-native';
 
 import { Bubble, ChatLayout, Composer } from '@/components/chat';
 import { Icon } from '@/components/ui/Icon';
-import { Avatar, EmptyState, IconButton, Screen, TopBar, Txt } from '@/components/ui/kit';
+import { Avatar, EmptyState, IconButton, LoadingState, Screen, TopBar, Txt } from '@/components/ui/kit';
 import { hrs } from '@/lib/format';
 import { pickFromLibrary } from '@/lib/photos';
 import { doctorById } from '@/lib/selectors';
 import { alertError } from '@/lib/useSubmit';
-import { useActions, useApp } from '@/store/AppStore';
+import { useActions, useApp, useRefreshIfMissing } from '@/store/AppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { space } from '@/theme/tokens';
 
@@ -20,6 +20,7 @@ export default function DoctorThread() {
   const s = useApp();
   const { sendMessage, markThreadRead } = useActions();
   const t = s.threads.find((x) => x.id === id);
+  const checking = useRefreshIfMissing(!t);
   const d = doctorById(s, t?.doctorId);
   const doctorName = d?.name ?? 'Your doctor';
 
@@ -30,7 +31,11 @@ export default function DoctorThread() {
   if (!t) {
     return (
       <Screen header={<TopBar />}>
-        <EmptyState icon="forum" title="Conversation not found" body="Book a visit or case review to message a dermatologist." />
+        {checking ? (
+          <LoadingState label="Loading conversation" />
+        ) : (
+          <EmptyState icon="forum" title="Conversation not found" body="Book a visit or case review to message a dermatologist." />
+        )}
       </Screen>
     );
   }

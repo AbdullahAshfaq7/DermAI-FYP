@@ -5,7 +5,7 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { AppState as RNAppState } from 'react-native';
+import { Linking, AppState as RNAppState } from 'react-native';
 
 import type { Appointment, Assessment, Availability, PaymentMethod, Role, SavedItem, Scan, ServiceType } from '@/data/types';
 import { api, ApiError, currentRefreshToken, del, get, loadTokens, patch, photoPart, post, put, setSignedOutHandler, setTokens, upload, type FilePart } from '@/lib/api';
@@ -413,9 +413,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         timer = null;
       }
     });
+    // A link (a notification, another app) can open a screen for data this copy hasn't seen yet.
+    const links = Linking.addEventListener('url', () => void refresh());
     return () => {
       if (timer) clearInterval(timer);
       sub.remove();
+      links.remove();
     };
   }, [signedInNow, refresh]);
 
@@ -447,3 +450,19 @@ export function useStore(): Store {
 
 export const useApp = () => useStore().state;
 export const useActions = () => useStore().actions;
+
+/**
+ * For screens opened by id (often from a link): when the item isn't in local state, fetch the server's
+ * state once before showing "not found". Returns true while that check is running.
+ */
+export function useRefreshIfMissing(missing: boolean): boolean {
+  const { refresh } = useActions();
+  const tried = useRef(false);
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    if (!missing || tried.current) return;
+    tried.current = true;
+    refresh().finally(() => setDone(true));
+  }, [missing, refresh]);
+  return missing && !done;
+}

@@ -3,14 +3,14 @@ import { useState } from 'react';
 import { ScrollView, Share, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Banner, Button, Disclaimer, EmptyState, IconButton, levelTone, List, Row, Screen, StatusPill, TopBar, Txt } from '@/components/ui/kit';
+import { Banner, Button, Disclaimer, EmptyState, IconButton, LoadingState, levelTone, List, Row, Screen, StatusPill, TopBar, Txt } from '@/components/ui/kit';
 import { FaceMap, MapTag } from '@/components/visual';
 import { CONCERNS } from '@/data/seed';
 import type { ConcernKey, ZoneKey } from '@/data/types';
 import { rankedConcerns } from '@/lib/analysis';
 import { dayMonth, time } from '@/lib/format';
 import { previousScan, scanById, summaryLine, useCountUp, zoneName } from '@/lib/selectors';
-import { useApp } from '@/store/AppStore';
+import { useApp, useRefreshIfMissing } from '@/store/AppStore';
 import { concernScale, nightColors } from '@/theme/colors';
 import { NightTheme, useTheme } from '@/theme/ThemeProvider';
 import { space, type } from '@/theme/tokens';
@@ -36,13 +36,18 @@ export default function Results() {
   const { id, fresh } = useLocalSearchParams<{ id: string; fresh?: string }>();
   const state = useApp();
   const scan = scanById(state, id);
+  const checking = useRefreshIfMissing(!scan);
   const score = useCountUp(scan?.score ?? 0, fresh === '1');
   const [w, setW] = useState(0);
 
   if (!scan) {
     return (
       <Screen header={<TopBar left="close" onLeft={close} />}>
-        <EmptyState icon="history" title="This scan isn't here any more" body="It may have been deleted. Your other scans are in Scan history." action="Scan history" onAction={() => router.replace('/history')} />
+        {checking ? (
+          <LoadingState label="Loading scan" />
+        ) : (
+          <EmptyState icon="history" title="This scan isn't here any more" body="It may have been deleted. Your other scans are in Scan history." action="Scan history" onAction={() => router.replace('/history')} />
+        )}
       </Screen>
     );
   }

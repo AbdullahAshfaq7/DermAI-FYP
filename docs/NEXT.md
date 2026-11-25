@@ -14,4 +14,3 @@ The app and backend work end to end without any third-party service. These were 
 | **Native live-check tuning** | Light/Steady/Framing come from the server precheck on a small frame about once a second | Test on real phones in Lahore light; consider on-device checks (expo-camera frame processor) to save data |
 | **Urdu** | Language setting stored; Urdu shows "coming in a later version" | i18n strings in the app |
 | **Cloud storage and deployment** (S3/R2, Render/Fly, managed Postgres) | Files on local disk behind signed links; local Postgres | `backend/app/storage.py` keeps the same four functions; deploy with Docker |
-| **Admin web panel** | Command line: `uv run python -m app.cli pending / approve-derm / reject-derm` and `/admin/*` endpoints | Small web page over the `/admin` endpoints |

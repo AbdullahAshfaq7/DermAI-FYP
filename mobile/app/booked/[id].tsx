@@ -4,12 +4,12 @@ import { useState } from 'react';
 import { Alert, Pressable, View } from 'react-native';
 
 import { Icon } from '@/components/ui/Icon';
-import { Avatar, Button, Card, EmptyState, Screen, StatusPill, TopBar, Txt } from '@/components/ui/kit';
+import { Avatar, Button, Card, EmptyState, LoadingState, Screen, StatusPill, TopBar, Txt } from '@/components/ui/kit';
 import { SERVICE_META } from '@/data/seed';
 import { dayMonth, drShort, longWeekday, time, weekdayDayMonth } from '@/lib/format';
 import { doctorById } from '@/lib/selectors';
 import { alertError, attempt } from '@/lib/useSubmit';
-import { useActions, useApp } from '@/store/AppStore';
+import { useActions, useApp, useRefreshIfMissing } from '@/store/AppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { space } from '@/theme/tokens';
 
@@ -27,6 +27,7 @@ export default function Booked() {
   const [now] = useState(() => Date.now());
   const [cancelling, setCancelling] = useState(false);
   const appt = s.appointments.find((a) => a.id === id);
+  const checking = useRefreshIfMissing(!appt);
   const listed = doctorById(s, appt?.doctorId);
   const d = listed ?? { name: 'Your doctor', clinic: '' };
   const thread = s.threads.find((t) => t.doctorId === appt?.doctorId);
@@ -34,7 +35,7 @@ export default function Booked() {
   if (!appt) {
     return (
       <Screen edges={[]} header={<TopBar left="close" onLeft={close} />}>
-        <EmptyState icon="event-busy" title="Booking not found" body="It may have been cancelled." />
+        {checking ? <LoadingState label="Loading booking" /> : <EmptyState icon="event-busy" title="Booking not found" body="It may have been cancelled." />}
       </Screen>
     );
   }

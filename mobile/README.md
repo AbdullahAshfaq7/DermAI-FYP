@@ -42,7 +42,7 @@ Seeded by the backend, password `demo1234` (the log-in screen has shortcuts in d
 - Patient: `ayesha@mail.com` (five scans, a booked visit, a doctor thread)
 - Dermatologist: `sana@clinic.pk` (verified, with a case inbox and schedule)
 
-Signing up creates a real account; new doctors appear to patients after an admin approves them (`uv run python -m app.cli approve-derm EMAIL`).
+Signing up creates a real account; new doctors appear to patients after an admin approves them in the admin portal (Doctors tab) or with `uv run python -m app.cli approve-derm EMAIL`.
 
 ## How some features work
 
