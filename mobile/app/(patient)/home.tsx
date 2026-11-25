@@ -59,16 +59,16 @@ export default function Home() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs, paddingRight: space.lg }}>
             <FaceMap zones={scan.zones} width={120} height={136} density={20} />
             <View style={{ flex: 1, gap: 2 }}>
-              <Txt variant="caption" style={{ color: '#B3A9D6' }}>
+              <Txt variant="caption" style={{ color: '#A6B8D4' }}>
                 Skin score
               </Txt>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-                <Txt variant="score" style={{ color: '#EEE9FF', fontSize: 42, lineHeight: 46 }}>
+                <Txt variant="score" style={{ color: '#EAF2FF', fontSize: 42, lineHeight: 46 }}>
                   {scan.score}
                 </Txt>
                 {delta != null ? <StatusPill icon={delta >= 0 ? 'trending-up' : 'trending-down'} label={`${delta >= 0 ? '+' : ''}${delta}`} tone={delta >= 0 ? 'good' : 'act'} /> : null}
               </View>
-              <Txt variant="caption" style={{ color: '#B3A9D6' }} numberOfLines={2}>
+              <Txt variant="caption" style={{ color: '#A6B8D4' }} numberOfLines={2}>
                 {summaryLine(scan).split('.')[0]}
               </Txt>
             </View>
@@ -76,10 +76,10 @@ export default function Home() {
         </Card>
       ) : (
         <Card tone="night">
-          <Txt variant="heading" style={{ color: '#EEE9FF' }}>
+          <Txt variant="heading" style={{ color: '#EAF2FF' }}>
             No scans yet
           </Txt>
-          <Txt variant="body" style={{ color: '#B3A9D6', marginTop: 4, marginBottom: space.md }}>
+          <Txt variant="body" style={{ color: '#A6B8D4', marginTop: 4, marginBottom: space.md }}>
             Your first one takes about a minute.
           </Txt>
           <Button label="Scan my skin" icon="center-focus-strong" onPress={() => router.push('/scan')} />

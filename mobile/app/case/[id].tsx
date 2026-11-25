@@ -77,7 +77,7 @@ export default function CaseReview() {
         )
       }>
       {views.length > 1 ? <Segmented value={shown} onChange={setView} options={views} /> : null}
-      <View style={{ height: 220, borderRadius: 24, overflow: 'hidden', backgroundColor: '#150E26' }} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
+      <View style={{ height: 220, borderRadius: 24, overflow: 'hidden', backgroundColor: '#0E1A2E' }} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
         {shown === 'map' ? (
           w ? <FaceMap zones={c.ai.zones} width={w} height={220} density={22} /> : null
         ) : shown === 'compare' ? (

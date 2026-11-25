@@ -85,11 +85,11 @@ if __name__ == "__main__":
 
     out = sys.argv[1]
     w = 1200
-    img = Image.new("RGBA", (w * 2 * SS // 2, w * SS // 2), (247, 244, 251, 255))
+    img = Image.new("RGBA", (w * 2 * SS // 2, w * SS // 2), (243, 246, 251, 255))
     half = img.size[0] // 2
     left = img.crop((0, 0, half, img.size[1]))
     draw_mark(left, half / 2, img.size[1] / 2, img.size[1] * 0.8)
-    right = Image.new("RGBA", left.size, (21, 14, 38, 255))
+    right = Image.new("RGBA", left.size, (14, 26, 46, 255))
     draw_mark(right, half / 2, img.size[1] / 2, img.size[1] * 0.8)
     img.paste(left, (0, 0))
     img.paste(right, (half, 0))

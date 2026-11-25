@@ -62,7 +62,7 @@ export function TabBar({ state, emitter, navigateToTab, tabs, role }: BottomTabB
         style={[
           styles.dock,
           { bottom, backgroundColor: colors.dock, borderColor: colors.border },
-          colors.shadow !== 'rgba(0, 0, 0, 0)' ? ({ boxShadow: '0 14px 30px -12px rgba(33,20,58,0.4)' } as ViewStyle) : null,
+          colors.shadow !== 'rgba(0, 0, 0, 0)' ? ({ boxShadow: '0 14px 30px -12px rgba(20,35,61,0.35)' } as ViewStyle) : null,
         ]}>
         {items.slice(0, half).map(renderTab)}
         {role === 'patient' ? (
@@ -79,6 +79,15 @@ export function TabBar({ state, emitter, navigateToTab, tabs, role }: BottomTabB
                 { backgroundColor: colors.brand, borderColor: colors.dock === lightDock ? '#FFFFFF' : colors.surface, opacity: pressed ? 0.88 : 1 },
                 { boxShadow: `0 10px 20px -6px ${colors.brand}` } as ViewStyle,
               ]}>
+              {colors.brandAlt !== colors.brand ? (
+                <LinearGradient
+                  pointerEvents="none"
+                  colors={[colors.brand, colors.brandAlt]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[StyleSheet.absoluteFill, { borderRadius: 29 }]}
+                />
+              ) : null}
               <Icon name="center-focus-strong" size={26} color={colors.onFill} />
             </Pressable>
           </View>

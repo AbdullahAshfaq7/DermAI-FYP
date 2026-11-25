@@ -41,17 +41,17 @@ export function LogoMark({ size = 40 }: { size?: number; ring?: string }) {
   );
 }
 
-/** "derm" in ink, "AI" in violet (always violet, even in the dermatologist's green theme). */
+/** "derm" in ink, "AI" in brand blue (always blue, even in the dermatologist's green theme). */
 export function Wordmark({ size = 28, color, onDark, tagline, center }: { size?: number; color?: string; onDark?: boolean; tagline?: boolean; center?: boolean }) {
   const { colors, isDark } = useTheme();
   const dark = onDark ?? isDark;
   return (
     <View style={center ? { alignItems: 'center' } : undefined}>
       <Text style={{ fontFamily: fonts.display800, fontSize: size, lineHeight: size * 1.05, letterSpacing: -size * 0.04, color: color ?? colors.textPrimary }}>
-        derm<Text style={{ color: dark ? '#9B8CFF' : '#5B3DF5' }}>AI</Text>
+        derm<Text style={{ color: dark ? '#6FA9F2' : '#2F67C9' }}>AI</Text>
       </Text>
       {tagline ? (
-        <Text style={{ fontFamily: fonts.sans500, fontSize: Math.max(10, size * 0.42), letterSpacing: 0.2, color: dark ? '#B7AEDB' : colors.textSecondary }}>AI Skin Insights</Text>
+        <Text style={{ fontFamily: fonts.sans500, fontSize: Math.max(10, size * 0.42), letterSpacing: 0.2, color: dark ? '#A6B8D4' : colors.textSecondary }}>AI Skin Insights</Text>
       ) : null}
     </View>
   );
@@ -105,7 +105,7 @@ function faceDots(w: number, h: number, zones: Record<ZoneKey, ConcernLevel> | n
       if (Math.abs(nx) > hw || hole(nx, ny)) continue;
       const edge = Math.min(1, (1 - Math.abs(nx) / hw) * 4);
       const hv = hash(x, y);
-      let color = '#C4B8FF';
+      let color = '#B7D0F7';
       let rad = s * (0.17 + 0.07 * hv);
       let al = 0.5;
       let glow = 0;
@@ -184,7 +184,7 @@ export function FaceMap({
             cy={height / 2 + (ZONE_C[selected][1] * fh) / 2}
             rx={(ZONE_C[selected][2] * fw) / 2 + 6}
             ry={(ZONE_C[selected][3] * fh) / 2 + 6}
-            stroke="#EEE9FF"
+            stroke="#EAF2FF"
             strokeWidth={1.5}
             strokeDasharray="4 4"
             fill="none"
@@ -214,9 +214,9 @@ export function FaceMap({
 /** A small label pinned on the night map: "T-zone, moderate". */
 export function MapTag({ label, level, style }: { label: string; level: ConcernLevel; style?: StyleProp<ViewStyle> }) {
   return (
-    <View style={[{ position: 'absolute', flexDirection: 'row', alignItems: 'center', gap: 5, height: 24, paddingLeft: 7, paddingRight: 9, borderRadius: 99, backgroundColor: 'rgba(45,35,80,0.92)' }, style]}>
+    <View style={[{ position: 'absolute', flexDirection: 'row', alignItems: 'center', gap: 5, height: 24, paddingLeft: 7, paddingRight: 9, borderRadius: 99, backgroundColor: 'rgba(21,37,64,0.92)' }, style]}>
       <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: concernScale[level] }} />
-      <Text style={[type.caption, { color: '#EEE9FF', fontSize: 11 }]}>{label}</Text>
+      <Text style={[type.caption, { color: '#EAF2FF', fontSize: 11 }]}>{label}</Text>
     </View>
   );
 }
@@ -240,8 +240,8 @@ export function ScanSweep({ height, width }: { height: number; width: number }) 
   }, [height, y]);
   return (
     <Animated.View pointerEvents="none" style={{ position: 'absolute', left: width * 0.1, width: width * 0.8, top: -24, height: 26, transform: [{ translateY: y }] }}>
-      <FadeGradient colors={['rgba(140,123,255,0)', 'rgba(140,123,255,0.32)']} style={{ flex: 1 }} />
-      <View style={{ height: 2, borderRadius: 1, backgroundColor: '#DCD4FF', boxShadow: '0 0 10px #8C7BFF' } as ViewStyle} />
+      <FadeGradient colors={['rgba(79,139,234,0)', 'rgba(79,139,234,0.32)']} style={{ flex: 1 }} />
+      <View style={{ height: 2, borderRadius: 1, backgroundColor: '#CFE1FA', boxShadow: '0 0 10px #5AB4E0' } as ViewStyle} />
     </Animated.View>
   );
 }
@@ -356,7 +356,7 @@ export function ScanPhoto({
         <FadeGradient colors={[base, deeper]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: '100%', height: '100%' }} />
       )}
       {label ? (
-        <View style={{ position: 'absolute', left: 8, bottom: 8, backgroundColor: 'rgba(45,35,80,0.9)', borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3 }}>
+        <View style={{ position: 'absolute', left: 8, bottom: 8, backgroundColor: 'rgba(21,37,64,0.9)', borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3 }}>
           <Text style={[type.caption, { color: '#FFFFFF' }]}>{label}</Text>
         </View>
       ) : null}
@@ -398,12 +398,12 @@ export function PhotoCompare({
         </View>
         <View style={{ position: 'absolute', left: x - 1, top: 0, bottom: 0, width: 2, backgroundColor: '#FFFFFF' }} />
         <View style={{ position: 'absolute', left: x - 16, top: height / 2 - 16, width: 32, height: 32, borderRadius: 16, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
-        <Icon name="code" size={18} color="#21143A" />
+        <Icon name="code" size={18} color="#14233D" />
         </View>
-        <View style={{ position: 'absolute', left: 8, bottom: 8, backgroundColor: 'rgba(45,35,80,0.9)', borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3 }}>
+        <View style={{ position: 'absolute', left: 8, bottom: 8, backgroundColor: 'rgba(21,37,64,0.9)', borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3 }}>
         <Text style={[type.caption, { color: '#FFFFFF' }]}>{before.label}</Text>
         </View>
-        <View style={{ position: 'absolute', right: 8, bottom: 8, backgroundColor: 'rgba(45,35,80,0.9)', borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3 }}>
+        <View style={{ position: 'absolute', right: 8, bottom: 8, backgroundColor: 'rgba(21,37,64,0.9)', borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3 }}>
         <Text style={[type.caption, { color: '#FFFFFF' }]}>{after.label}</Text>
         </View>
       </View>

@@ -168,7 +168,7 @@ export function usePrompt() {
 
   const node = (
     <Modal visible={!!spec} transparent animationType="fade" onRequestClose={close}>
-      <Pressable onPress={close} style={{ flex: 1, backgroundColor: 'rgba(8,5,18,0.72)', justifyContent: 'center', padding: space.screen }}>
+      <Pressable onPress={close} style={{ flex: 1, backgroundColor: 'rgba(5,10,20,0.72)', justifyContent: 'center', padding: space.screen }}>
         <Pressable onPress={() => {}} style={[{ backgroundColor: colors.surface, borderRadius: radius.sheet, padding: space.lg, gap: space.md, borderWidth: 1, borderColor: colors.border }, shadow(colors, true)]}>
           <Txt variant="title">{spec?.title ?? ''}</Txt>
           {spec?.message ? (

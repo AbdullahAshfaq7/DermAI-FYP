@@ -15,14 +15,14 @@ OUT = ROOT / "assets" / "images" / "branding"
 FONT = ROOT / "node_modules/@expo-google-fonts/bricolage-grotesque/800ExtraBold/BricolageGrotesque_800ExtraBold.ttf"
 FONT_SANS = ROOT / "node_modules/@expo-google-fonts/instrument-sans/500Medium/InstrumentSans_500Medium.ttf"
 
-NIGHT = (0x15, 0x0E, 0x26)
-VIOLET = (0x7B, 0x63, 0xFF)
-AI_VIOLET = (0x9B, 0x8C, 0xFF)
+NIGHT = (0x0E, 0x1A, 0x2E)
+BLUE = (0x4F, 0x8B, 0xEA)
+AI_BLUE = (0x6F, 0xA9, 0xF2)
 
 
 def glow(size: tuple[int, int], cx: float, cy: float, radius: float, alpha: int) -> Image.Image:
     layer = Image.new("RGBA", size, (0, 0, 0, 0))
-    ImageDraw.Draw(layer).ellipse([cx - radius, cy - radius, cx + radius, cy + radius], fill=(*VIOLET, alpha))
+    ImageDraw.Draw(layer).ellipse([cx - radius, cy - radius, cx + radius, cy + radius], fill=(*BLUE, alpha))
     return layer.filter(ImageFilter.GaussianBlur(radius * 0.45))
 
 
@@ -64,10 +64,10 @@ def main() -> None:
     x0 = (n * SS - (wd + wa)) / 2
     y0 = 720 * SS
     d.text((x0, y0), derm, font=font, fill=(255, 255, 255, 255))
-    d.text((x0 + wd, y0), ai, font=font, fill=(*AI_VIOLET, 255))
+    d.text((x0 + wd, y0), ai, font=font, fill=(*AI_BLUE, 255))
     tag = ImageFont.truetype(str(FONT_SANS), 84 * SS)
     text = "AI Skin Insights"
-    d.text(((n * SS - d.textlength(text, font=tag)) / 2, y0 + 300 * SS), text, font=tag, fill=(0xB7, 0xAE, 0xDB, 255))
+    d.text(((n * SS - d.textlength(text, font=tag)) / 2, y0 + 300 * SS), text, font=tag, fill=(0xA6, 0xB8, 0xD4, 255))
     save(img, "splash-logo.png", n, n, rgb=False)
 
 

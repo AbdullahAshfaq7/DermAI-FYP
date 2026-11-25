@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Children, Fragment, isValidElement, useState, type ReactNode } from 'react';
 import {
@@ -50,7 +51,7 @@ function textColor(c: ThemeColors, color: TextColor): string {
 /** Lumen's soft drop shadow (light mode only; dark surfaces separate by colour). */
 export function shadow(c: ThemeColors, strong = false): ViewStyle {
   if (c.shadow === 'rgba(0, 0, 0, 0)') return {};
-  return { boxShadow: strong ? `0 14px 30px -12px ${c.shadow.replace('0.14', '0.4')}` : `0 1px 2px rgba(33,20,58,0.05), 0 6px 16px -8px ${c.shadow}` } as ViewStyle;
+  return { boxShadow: strong ? `0 14px 30px -12px ${c.shadow.replace('0.14', '0.4')}` : `0 1px 2px rgba(20,35,61,0.05), 0 6px 16px -8px ${c.shadow}` } as ViewStyle;
 }
 
 export function Txt({
@@ -225,7 +226,7 @@ export function IconButton({
 
 export type ButtonVariant = 'primary' | 'brand' | 'clinician' | 'secondary' | 'destructive' | 'ghost' | 'light' | 'ink' | 'soft';
 
-/** Pill buttons. `primary` and `brand` are Lamp violet (Emerald on doctor screens), `ink` is Aubergine. */
+/** Pill buttons. `primary` and `brand` are the blue-to-teal gradient (teal-green on doctor screens), `ink` is navy. */
 export function Button({
   label,
   onPress,
@@ -258,6 +259,7 @@ export function Button({
     light: { bg: colors.surface, fg: colors.textPrimary },
   };
   const v = map[variant];
+  const gradient = (variant === 'primary' || variant === 'brand') && colors.brandAlt !== colors.brand;
   return (
     <Pressable
       onPress={onPress}
@@ -274,6 +276,15 @@ export function Button({
         (disabled || pressed) && { opacity: disabled ? 0.42 : 0.86 },
         style,
       ]}>
+      {gradient ? (
+        <LinearGradient
+          pointerEvents="none"
+          colors={[colors.brand, colors.brandAlt]}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={[StyleSheet.absoluteFill, { borderRadius: radius.full }]}
+        />
+      ) : null}
       {loading ? (
         <ActivityIndicator color={v.fg} />
       ) : (
@@ -317,7 +328,7 @@ export function Card({
     muted: { backgroundColor: colors.surfaceMuted },
     peach: { backgroundColor: colors.peachWash },
     butter: { backgroundColor: colors.butterWash },
-    night: { backgroundColor: '#150E26' },
+    night: { backgroundColor: '#0E1A2E' },
   };
   const base = [{ borderRadius: radius.card, padding: padded ? space.lg : 0, overflow: 'hidden' as const }, tones[tone], style];
   if (onPress) {

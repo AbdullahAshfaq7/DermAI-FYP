@@ -1,6 +1,6 @@
 /**
- * Lumen design tokens (storyboard v3, 20 Nov 2026).
- * Lamp violet on pearl for patients, Night for the scan flow, Emerald for dermatologists.
+ * Design tokens. Clinical blue to teal on cool pearl for patients, deep navy Night for the scan flow,
+ * teal-green for dermatologists.
  * Token names are shared by every screen; the role and night variants swap values, not names.
  */
 
@@ -21,12 +21,14 @@ export interface ThemeColors {
   /** Dark button fill (Aubergine), light in dark mode. */
   ink: string;
   onInk: string;
-  /** Lamp violet: actions, progress, selection. */
+  /** Clinical blue: actions, progress, selection. */
   brand: string;
+  /** Teal end of the brand gradient (primary buttons, scan button). */
+  brandAlt: string;
   brandDeep: string;
   brandWash: string;
   brandSoft: string;
-  /** Emerald: dermatologist-only. */
+  /** Teal-green: dermatologist-only. */
   clinician: string;
   clinicianDeep: string;
   clinicianWash: string;
@@ -54,24 +56,25 @@ export interface ThemeColors {
 }
 
 export const lightColors: ThemeColors = {
-  bg: '#F7F4FB',
+  bg: '#F3F6FB',
   surface: '#FFFFFF',
-  surfaceMuted: '#F0EBF7',
-  border: '#E7E0F1',
-  hairline: '#EEE8F5',
-  textPrimary: '#21143A',
-  textSecondary: '#615578',
-  textMuted: '#9A90AE',
+  surfaceMuted: '#EAF0F8',
+  border: '#DDE6F1',
+  hairline: '#E7EDF5',
+  textPrimary: '#14233D',
+  textSecondary: '#55657D',
+  textMuted: '#8B98AC',
   onFill: '#FFFFFF',
-  ink: '#21143A',
+  ink: '#14233D',
   onInk: '#FFFFFF',
-  brand: '#5B3DF5',
-  brandDeep: '#4327D6',
-  brandWash: '#EEEAFF',
-  brandSoft: '#D8CFFF',
-  clinician: '#0B8A63',
-  clinicianDeep: '#06694B',
-  clinicianWash: '#E0F4EC',
+  brand: '#2F67C9',
+  brandAlt: '#4BB3C2',
+  brandDeep: '#1F4F9F',
+  brandWash: '#E4EEFA',
+  brandSoft: '#C7DAF3',
+  clinician: '#2A9A84',
+  clinicianDeep: '#1D7766',
+  clinicianWash: '#DDF3EE',
   peach: '#FF8F6B',
   peachDeep: '#C4532F',
   peachWash: '#FFEEE6',
@@ -87,31 +90,32 @@ export const lightColors: ThemeColors = {
   act: '#C8363A',
   actIcon: '#C8363A',
   actWash: '#FDE5E4',
-  scrim: 'rgba(33, 20, 58, 0.45)',
-  camera: '#150E26',
-  shadow: 'rgba(33, 20, 58, 0.14)',
+  scrim: 'rgba(20, 35, 61, 0.45)',
+  camera: '#0C1628',
+  shadow: 'rgba(20, 35, 61, 0.12)',
   dock: 'rgba(255, 255, 255, 0.97)',
 };
 
 export const darkColors: ThemeColors = {
-  bg: '#120C1F',
-  surface: '#1C1530',
-  surfaceMuted: '#261E3D',
-  border: '#2F2648',
-  hairline: '#2A2242',
-  textPrimary: '#F0EBFA',
-  textSecondary: '#AEA3C6',
-  textMuted: '#7C7196',
+  bg: '#0B1424',
+  surface: '#132038',
+  surfaceMuted: '#1A2A46',
+  border: '#243756',
+  hairline: '#1E2F4D',
+  textPrimary: '#EAF1FB',
+  textSecondary: '#A3B3CC',
+  textMuted: '#72839E',
   onFill: '#FFFFFF',
-  ink: '#F0EBFA',
-  onInk: '#150E26',
-  brand: '#8C7BFF',
-  brandDeep: '#B9AEFF',
-  brandWash: '#2A2252',
-  brandSoft: '#3D3375',
-  clinician: '#4FD1A5',
-  clinicianDeep: '#8BE6C6',
-  clinicianWash: '#123A2E',
+  ink: '#EAF1FB',
+  onInk: '#0B1424',
+  brand: '#5B95F0',
+  brandAlt: '#4FC3CF',
+  brandDeep: '#A9C8F7',
+  brandWash: '#172E55',
+  brandSoft: '#24457C',
+  clinician: '#4FC7B0',
+  clinicianDeep: '#8FE0CF',
+  clinicianWash: '#113A35',
   peach: '#FF9E80',
   peachDeep: '#FFB79F',
   peachWash: '#3A2320',
@@ -128,31 +132,32 @@ export const darkColors: ThemeColors = {
   actIcon: '#F06A66',
   actWash: '#3D1C20',
   scrim: 'rgba(0, 0, 0, 0.6)',
-  camera: '#0D0818',
+  camera: '#081120',
   shadow: 'rgba(0, 0, 0, 0)',
-  dock: 'rgba(33, 26, 54, 0.97)',
+  dock: 'rgba(19, 32, 56, 0.97)',
 };
 
 /** Night: camera, analysis and results, so skin and the map are the brightest things on screen. */
 export const nightColors: ThemeColors = {
   ...darkColors,
-  bg: '#150E26',
-  surface: '#211839',
-  surfaceMuted: '#2D2350',
-  border: '#3A2F63',
-  hairline: '#2D2350',
-  textPrimary: '#EEE9FF',
-  textSecondary: '#B3A9D6',
-  textMuted: '#8C82B0',
-  brand: '#7B63FF',
-  brandDeep: '#C9BEFF',
-  brandWash: '#2D2350',
-  camera: '#150E26',
+  bg: '#0E1A2E',
+  surface: '#152540',
+  surfaceMuted: '#1D3152',
+  border: '#2A4168',
+  hairline: '#1D3152',
+  textPrimary: '#EAF2FF',
+  textSecondary: '#A6B8D4',
+  textMuted: '#7D90B0',
+  brand: '#4F8BEA',
+  brandAlt: '#4BB3C2',
+  brandDeep: '#B7D0F7',
+  brandWash: '#1D3152',
+  camera: '#0E1A2E',
 };
 
 /** Concern scale. Glowing dots on Night only (face map, concern bars). */
 export const concernScale = {
-  Clear: '#8C7BFF',
+  Clear: '#5AB4E0',
   Mild: '#FFD66E',
   Moderate: '#FF9563',
   High: '#FF4F6D',
@@ -163,10 +168,10 @@ export type ConcernLevel = keyof typeof concernScale;
 /** Fitzpatrick I to VI: the logo, the skin-tone picker and default avatars only. Never status. */
 export const fitzpatrick = ['#F5DCCB', '#EBC2A2', '#D4A07A', '#A8714C', '#7A4B31', '#4A2E22'] as const;
 
-/** Dermatologist screens swap Lamp violet for Emerald everywhere. */
+/** Dermatologist screens swap clinical blue for teal-green everywhere. */
 export function withRole(c: ThemeColors, clinician: boolean): ThemeColors {
   if (!clinician) return c;
-  return { ...c, brand: c.clinician, brandDeep: c.clinicianDeep, brandWash: c.clinicianWash, brandSoft: c.clinicianWash };
+  return { ...c, brand: c.clinician, brandAlt: c.clinician, brandDeep: c.clinicianDeep, brandWash: c.clinicianWash, brandSoft: c.clinicianWash };
 }
 
 export function getColors(theme: ResolvedTheme): ThemeColors {

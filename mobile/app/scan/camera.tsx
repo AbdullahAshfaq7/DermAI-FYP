@@ -148,8 +148,8 @@ function Camera() {
             borderRadius: ovalW,
             borderWidth: allPass ? 3 : 2.5,
             borderStyle: allPass ? 'solid' : 'dashed',
-            borderColor: allPass ? '#8C7BFF' : '#A594FF',
-            boxShadow: `0 0 0 14px rgba(165,148,255,${allPass ? 0.28 : 0.14})`,
+            borderColor: allPass ? '#5AB4E0' : '#7FB0F2',
+            boxShadow: `0 0 0 14px rgba(127,176,242,${allPass ? 0.28 : 0.14})`,
           } as object}
         />
       </View>
@@ -158,7 +158,7 @@ function Camera() {
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <IconButton icon="close" label="Close camera" variant="dark" onPress={() => router.back()} />
             <View style={styles.camChip}>
-              <Text style={[type.smallStrong, { color: '#EEE9FF' }]}>{facing === 'front' ? 'Front camera' : 'Back camera'}</Text>
+              <Text style={[type.smallStrong, { color: '#EAF2FF' }]}>{facing === 'front' ? 'Front camera' : 'Back camera'}</Text>
             </View>
             <IconButton icon={torch ? 'flash-on' : 'flash-off'} label={torch ? 'Turn light off' : 'Turn light on'} variant="dark" onPress={() => setTorch((v) => !v)} />
           </View>
@@ -170,17 +170,17 @@ function Camera() {
               return (
                 <View
                   key={c.key}
-                  style={[styles.check, { backgroundColor: ok ? 'rgba(23,133,90,0.25)' : warn ? 'rgba(255,214,110,0.18)' : 'rgba(45,35,80,0.8)' }]}
+                  style={[styles.check, { backgroundColor: ok ? 'rgba(23,133,90,0.25)' : warn ? 'rgba(255,214,110,0.18)' : 'rgba(21,37,64,0.8)' }]}
                   accessibilityLabel={`${c.label}, ${ok ? 'passed' : 'not yet'}`}>
-                  <Icon name={ok ? 'check-circle' : warn ? 'zoom-in' : 'radio-button-unchecked'} size={15} color={ok ? '#7FE7B9' : warn ? '#FFD66E' : 'rgba(238,233,255,0.6)'} />
-                  <Text style={[type.small, { color: ok ? '#7FE7B9' : warn ? '#FFD66E' : '#EEE9FF' }]}>{c.label}</Text>
+                  <Icon name={ok ? 'check-circle' : warn ? 'zoom-in' : 'radio-button-unchecked'} size={15} color={ok ? '#7FE7B9' : warn ? '#FFD66E' : 'rgba(234,242,255,0.6)'} />
+                  <Text style={[type.small, { color: ok ? '#7FE7B9' : warn ? '#FFD66E' : '#EAF2FF' }]}>{c.label}</Text>
                 </View>
               );
             })}
           </View>
         </View>
         <View style={{ gap: space.lg, paddingBottom: space.lg }}>
-          <Text style={[type.heading, { color: '#EEE9FF', textAlign: 'center' }]} accessibilityLiveRegion="polite">
+          <Text style={[type.heading, { color: '#EAF2FF', textAlign: 'center' }]} accessibilityLiveRegion="polite">
             {hint}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' }}>
@@ -205,8 +205,8 @@ export default function CameraScreen() {
 }
 
 const styles = StyleSheet.create({
-  camChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 99, backgroundColor: 'rgba(45,35,80,0.8)' },
+  camChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 99, backgroundColor: 'rgba(21,37,64,0.8)' },
   check: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 999 },
-  shutter: { width: 76, height: 76, borderRadius: 38, borderWidth: 3, borderColor: '#EEE9FF', alignItems: 'center', justifyContent: 'center' },
-  shutterInner: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#EEE9FF' },
+  shutter: { width: 76, height: 76, borderRadius: 38, borderWidth: 3, borderColor: '#EAF2FF', alignItems: 'center', justifyContent: 'center' },
+  shutterInner: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#EAF2FF' },
 });

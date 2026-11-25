@@ -109,7 +109,7 @@ function Analyzing() {
           const now = i === stage;
           return (
             <View key={s} style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, opacity: i > stage ? 0.45 : 1 }}>
-              <Icon name={done ? 'check-circle' : now ? 'autorenew' : 'radio-button-unchecked'} size={20} color={done ? '#8C7BFF' : colors.textPrimary} />
+              <Icon name={done ? 'check-circle' : now ? 'autorenew' : 'radio-button-unchecked'} size={20} color={done ? '#5AB4E0' : colors.textPrimary} />
               <Txt variant={now ? 'bodyStrong' : 'body'} style={{ flex: 1 }}>
                 {s}
               </Txt>
