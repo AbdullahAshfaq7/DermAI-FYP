@@ -165,62 +165,73 @@ class HeuristicAnalyzer:
 
     def analyse(self, image: bytes, dim: bool) -> Analysis:
         p = Prepared(image)
-        lab = to_lab(p.rgb)
-        L, a = lab[..., 0], lab[..., 1]
-        chroma = np.hypot(lab[..., 1], lab[..., 2])
-        tex = np.abs(laplacian(p.gray))
-        skin = p.skin if p.skin.sum() > 200 else p.oval
-        Lm, am, cm = float(np.median(L[skin])), float(np.median(a[skin])), float(np.median(chroma[skin]))
-        a_q20 = float(np.percentile(a[skin], 20))
-        tex_m = float(np.median(tex[skin])) + 1e-3
+        zone_pct = zone_scores(p)
+        concerns = {k: concern_from_zones(zone_pct, k) for k in CONCERNS}
+        return assemble(concerns, zone_pct, dim, p.skin_ratio)
 
-        per_zone: dict[str, dict[str, float]] = {}
-        for z in ZONES:
-            m = p.zone_mask(z)
-            if m.sum() < 30:
-                m = skin
-            za, zl, zc, zt = a[m], L[m], chroma[m], tex[m]
-            red_delta = float(za.mean() - a_q20)
-            red_frac = float((za > am + 6).mean())
-            acne_frac = float((za > am + 9).mean())
-            spot_frac = float((zl < Lm - 14).mean())
-            texture = float(zt.mean() / tex_m)
-            chroma_def = max(0.0, (cm - float(zc.mean())) / max(cm, 1.0))
-            l_spread = float(zl.std())
-            per_zone[z] = {
-                "redness": 18 + 5.5 * red_delta + 90 * red_frac,
-                "acne": 14 + 330 * acne_frac + 1.5 * max(0.0, red_delta - 4),
-                "darkSpots": 16 + 210 * spot_frac + 0.9 * max(0.0, l_spread - 6),
-                "pores": 12 + 26 * max(0.0, texture - 0.8),
-                "dryness": 14 + 160 * chroma_def + 0.8 * max(0.0, l_spread - 8),
-                "sensitivity": 15 + 3.2 * red_delta + 70 * red_frac,
-            }
 
-        concerns: dict[str, dict] = {}
-        zone_pct: dict[str, dict[str, float]] = {z: {} for z in ZONES}
-        for k in CONCERNS:
-            vals = []
-            for z in CONCERN_ZONES[k]:
-                v = float(np.clip(per_zone[z][k], 5, 95))
-                zone_pct[z][k] = v
-                vals.append(v)
-            pct = int(round(np.clip(0.6 * max(vals) + 0.4 * (sum(vals) / len(vals)), 5, 95)))
-            concerns[k] = {"pct": pct, "level": level_for(pct)}
+def zone_scores(p: Prepared) -> dict[str, dict[str, float]]:
+    """Per-zone 5-95 readings for every concern, from colour and texture statistics."""
+    lab = to_lab(p.rgb)
+    L, a = lab[..., 0], lab[..., 1]
+    chroma = np.hypot(lab[..., 1], lab[..., 2])
+    tex = np.abs(laplacian(p.gray))
+    skin = p.skin if p.skin.sum() > 200 else p.oval
+    Lm, am, cm = float(np.median(L[skin])), float(np.median(a[skin])), float(np.median(chroma[skin]))
+    a_q20 = float(np.percentile(a[skin], 20))
+    tex_m = float(np.median(tex[skin])) + 1e-3
 
-        zones = {z: "Clear" for z in ZONES}
-        where: dict[str, list[str]] = {}
-        for k in CONCERNS:
-            ranked = sorted(CONCERN_ZONES[k], key=lambda z: zone_pct[z][k], reverse=True)
-            hits = [z for z in ranked if zone_pct[z][k] >= 30][:2]
-            if concerns[k]["level"] != "Clear" and not hits:
-                hits = ranked[:1]
-            where[k] = hits
-            for z in hits:
-                lvl = level_for(zone_pct[z][k])
-                if RANK[lvl] > RANK[zones[z]]:
-                    zones[z] = lvl
+    per_zone: dict[str, dict[str, float]] = {}
+    for z in ZONES:
+        m = p.zone_mask(z)
+        if m.sum() < 30:
+            m = skin
+        za, zl, zc, zt = a[m], L[m], chroma[m], tex[m]
+        red_delta = float(za.mean() - a_q20)
+        red_frac = float((za > am + 6).mean())
+        acne_frac = float((za > am + 9).mean())
+        spot_frac = float((zl < Lm - 14).mean())
+        texture = float(zt.mean() / tex_m)
+        chroma_def = max(0.0, (cm - float(zc.mean())) / max(cm, 1.0))
+        l_spread = float(zl.std())
+        per_zone[z] = {
+            "redness": 18 + 5.5 * red_delta + 90 * red_frac,
+            "acne": 14 + 330 * acne_frac + 1.5 * max(0.0, red_delta - 4),
+            "darkSpots": 16 + 210 * spot_frac + 0.9 * max(0.0, l_spread - 6),
+            "pores": 12 + 26 * max(0.0, texture - 0.8),
+            "dryness": 14 + 160 * chroma_def + 0.8 * max(0.0, l_spread - 8),
+            "sensitivity": 15 + 3.2 * red_delta + 70 * red_frac,
+        }
 
-        avg = sum(c["pct"] for c in concerns.values()) / len(concerns)
-        score = int(max(20, min(98, round(100 - avg * 0.55))))
-        confidence = int(np.clip(90 - (10 if dim else 0) - max(0.0, (0.55 - p.skin_ratio) * 60), 50, 95))
-        return Analysis(score=score, concerns=concerns, zones=zones, where=where, confidence=confidence)
+    zone_pct: dict[str, dict[str, float]] = {z: {} for z in ZONES}
+    for k in CONCERNS:
+        for z in CONCERN_ZONES[k]:
+            zone_pct[z][k] = float(np.clip(per_zone[z][k], 5, 95))
+    return zone_pct
+
+
+def concern_from_zones(zone_pct: dict[str, dict[str, float]], k: str) -> int:
+    vals = [zone_pct[z][k] for z in CONCERN_ZONES[k]]
+    return int(round(np.clip(0.6 * max(vals) + 0.4 * (sum(vals) / len(vals)), 5, 95)))
+
+
+def assemble(concern_pct: dict[str, int], zone_pct: dict[str, dict[str, float]], dim: bool, skin_ratio: float) -> Analysis:
+    """Turns concern percentages and per-zone readings into the scan result the app shows."""
+    concerns = {k: {"pct": int(v), "level": level_for(v)} for k, v in concern_pct.items()}
+    zones = {z: "Clear" for z in ZONES}
+    where: dict[str, list[str]] = {}
+    for k in CONCERNS:
+        ranked = sorted(CONCERN_ZONES[k], key=lambda z: zone_pct[z][k], reverse=True)
+        hits = [z for z in ranked if zone_pct[z][k] >= 30][:2]
+        if concerns[k]["level"] != "Clear" and not hits:
+            hits = ranked[:1]
+        where[k] = hits
+        for z in hits:
+            lvl = level_for(zone_pct[z][k])
+            if RANK[lvl] > RANK[zones[z]]:
+                zones[z] = lvl
+
+    avg = sum(c["pct"] for c in concerns.values()) / len(concerns)
+    score = int(max(20, min(98, round(100 - avg * 0.55))))
+    confidence = int(np.clip(90 - (10 if dim else 0) - max(0.0, (0.55 - skin_ratio) * 60), 50, 95))
+    return Analysis(score=score, concerns=concerns, zones=zones, where=where, confidence=confidence)

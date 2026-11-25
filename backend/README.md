@@ -61,7 +61,7 @@ Photos are phone-first. `POST /scans` analyses the upload and deletes the file; 
 | `app/models.py` | Tables |
 | `app/state.py` | Builds the `AppState` the app renders (same shape as `mobile/store/state.ts`) |
 | `app/routers/` | `auth`, `me` (profile, settings, routine, saved, notifications, AI chat, export), `scans`, `booking` (directory, slots, appointments, threads), `derm` (onboarding, cases, assessments, schedule), `admin` (admin portal) |
-| `app/analysis/` | Photo quality checks and the stand-in skin analyzer (swap for the ONNX model) |
+| `app/analysis/` | Photo quality checks, the pixel heuristic, and the ONNX skin models (`model.py`). Run `scripts/fetch_models.sh` once to download them into `models/`; without them the heuristic is used |
 | `app/slots.py` | Bookable slots from a doctor's real availability |
 | `app/routine.py` | Routine builder, mirrored from the app, used for streaks and doctor changes |
 | `app/ai_rules.py` | Ask DermAI replies (rules; the LLM is a next step) |

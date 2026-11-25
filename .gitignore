@@ -8,3 +8,4 @@ __pycache__/
 backend/.pgdata/
 backend/storage/
 mobile/.expo/
+backend/models/

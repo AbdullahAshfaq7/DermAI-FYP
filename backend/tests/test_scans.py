@@ -152,3 +152,23 @@ def test_live_precheck(client, ayesha):
     assert dim["ready"] is False and "light" in dim["hint"].lower()
     far = ayesha.post("/scans/precheck", files={"photo": ("f.jpg", face_bytes(blank), "image/jpeg")})
     assert far["ready"] is False
+
+
+def test_model_analyzer_reads_face():
+    import pytest
+
+    from app.config import get_settings
+
+    d = get_settings().model_dir
+    if not (d / "skin_signals.onnx").exists() or not (d / "acne_detector.onnx").exists():
+        pytest.skip("models not fetched (scripts/fetch_models.sh)")
+    from app.analysis.model import ModelAnalyzer
+
+    a = ModelAnalyzer(d)
+    data = face_bytes()
+    r = a.analyse(data, False)
+    assert r == a.analyse(data, False)
+    assert set(r.concerns) == {"acne", "dryness", "redness", "darkSpots", "sensitivity", "pores"}
+    assert 20 <= r.score <= 98
+    # The fixture face has visible acne on both cheeks.
+    assert r.concerns["acne"]["level"] != "Clear" and r.where["acne"]

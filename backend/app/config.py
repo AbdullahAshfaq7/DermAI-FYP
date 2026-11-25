@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     admin_password: str = "admin1234"
     cors_origins: str = "*"
     purge_after_days: int = 30
+    analyzer: str = "auto"  # auto | model | heuristic
+    model_dir: Path = BACKEND_DIR / "models"
 
 
 @lru_cache
