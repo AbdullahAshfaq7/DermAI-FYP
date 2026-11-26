@@ -90,7 +90,7 @@ function Review() {
             return (
               <Row
                 key={c.key}
-                leading={<Icon name={c.ok ? 'check-circle' : 'error'} size={22} color={c.ok ? '#5FD3A0' : okay ? '#FFD66E' : colors.actIcon} />}
+                leading={<Icon name={c.ok ? 'check-circle' : 'error'} size={22} color={c.ok ? '#5FD3A0' : okay ? '#FFB088' : colors.actIcon} />}
                 title={NAME[c.key]}
                 subtitle={c.label}
                 right={<StatusPill label={c.ok ? 'Good' : okay ? 'Okay' : 'Fix'} tone={c.ok ? 'good' : okay ? 'watch' : 'act'} />}

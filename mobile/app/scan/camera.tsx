@@ -170,10 +170,10 @@ function Camera() {
               return (
                 <View
                   key={c.key}
-                  style={[styles.check, { backgroundColor: ok ? 'rgba(23,133,90,0.25)' : warn ? 'rgba(255,214,110,0.18)' : 'rgba(21,37,64,0.8)' }]}
+                  style={[styles.check, { backgroundColor: ok ? 'rgba(23,133,90,0.25)' : warn ? 'rgba(255,176,136,0.18)' : 'rgba(21,37,64,0.8)' }]}
                   accessibilityLabel={`${c.label}, ${ok ? 'passed' : 'not yet'}`}>
-                  <Icon name={ok ? 'check-circle' : warn ? 'zoom-in' : 'radio-button-unchecked'} size={15} color={ok ? '#7FE7B9' : warn ? '#FFD66E' : 'rgba(234,242,255,0.6)'} />
-                  <Text style={[type.small, { color: ok ? '#7FE7B9' : warn ? '#FFD66E' : '#EAF2FF' }]}>{c.label}</Text>
+                  <Icon name={ok ? 'check-circle' : warn ? 'zoom-in' : 'radio-button-unchecked'} size={15} color={ok ? '#7FE7B9' : warn ? '#FFB088' : 'rgba(234,242,255,0.6)'} />
+                  <Text style={[type.small, { color: ok ? '#7FE7B9' : warn ? '#FFB088' : '#EAF2FF' }]}>{c.label}</Text>
                 </View>
               );
             })}

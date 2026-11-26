@@ -9,7 +9,7 @@ import { Txt } from '@/components/ui/kit';
 import logo from '@/assets/logo.json';
 import { CONCERNS, ZONE_LABEL } from '@/data/seed';
 import type { ConcernKey, ConcernLevel, ConcernReading, ZoneKey } from '@/data/types';
-import { concernScale, fitzpatrick } from '@/theme/colors';
+import { concernScale } from '@/theme/colors';
 import { useTheme } from '@/theme/ThemeProvider';
 import { fonts, radius, space, type } from '@/theme/tokens';
 
@@ -334,20 +334,21 @@ export function TrendLine({
 
 /* ───────────── Photos ───────────── */
 
-/** A scan photo, or a skin-toned placeholder for seeded demo scans that have no image. */
+/** A scan photo, or a soft brand-coloured placeholder for seeded demo scans that have no image. */
 export function ScanPhoto({
   uri,
-  tone,
   label,
   style,
 }: {
   uri?: string | null;
-  tone: number;
+  /** Accepted for older callers; the placeholder no longer uses skin tones. */
+  tone?: number;
   label?: string;
   style?: StyleProp<ViewStyle>;
 }) {
-  const base = fitzpatrick[Math.max(0, Math.min(5, tone))];
-  const deeper = fitzpatrick[Math.max(0, Math.min(5, tone + 1))];
+  const { colors } = useTheme();
+  const base = colors.brandWash;
+  const deeper = colors.brandSoft;
   return (
     <View style={[{ borderRadius: radius.card, overflow: 'hidden', backgroundColor: base }, style]}>
       {uri ? (

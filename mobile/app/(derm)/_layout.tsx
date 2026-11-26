@@ -1,10 +1,14 @@
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
 
 import { TabBar } from '@/components/TabBar';
-import { useApp } from '@/store/AppStore';
+import { homeFor } from '@/lib/nav';
+import { useStore } from '@/store/AppStore';
 
+/** Only a signed-in dermatologist sees these tabs; anyone else (signed out, other role) goes to their own start screen. */
 export default function DermTabs() {
-  const s = useApp();
+  const { state: s, ready } = useStore();
+  if (!ready) return null;
+  if (s.session?.role !== 'dermatologist') return <Redirect href={homeFor(s)} />;
   const unread = s.threads.filter((t) => t.unreadForDoctor > 0).length;
   const waiting = s.derm.cases.filter((c) => c.status === 'waiting').length;
   return (

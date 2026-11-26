@@ -1,21 +1,25 @@
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Icon } from '@/components/ui/Icon';
-import { Avatar, Button, Card, Chip, IconButton, IconTile, ProgressBar, Screen, StatusPill, Tick, Txt } from '@/components/ui/kit';
-import { FaceMap } from '@/components/visual';
+import { Avatar, Button, Card, Chip, IconButton, ProgressBar, Screen, SectionTitle, Tick, Txt, shadow } from '@/components/ui/kit';
+import { ConcernTile, ScoreRing } from '@/components/skin';
+import { LogoMark } from '@/components/visual';
+import { CONCERN_ORDER } from '@/data/seed';
 import { greeting, longWeekday, time, weekdayDayMonth, firstName, daysBetween } from '@/lib/format';
 import { periodNow } from '@/lib/routine';
 import { doctorById, nextAppointment, previousScan, rescanIn, routineProgress, streak, summaryLine, todayKey } from '@/lib/selectors';
 import { attempt } from '@/lib/useSubmit';
 import { useActions, useApp } from '@/store/AppStore';
 import { useTheme } from '@/theme/ThemeProvider';
-import { space } from '@/theme/tokens';
+import { radius, space } from '@/theme/tokens';
 
 const SERVICE_LABEL = { video: 'Video visit', clinic: 'Clinic visit', message: 'Case review' } as const;
 
-/** D1 Home: score, today's task and what's coming, in that order. */
+/** D1 Home: skin overview (score and six concerns), today's routine, then what's coming. */
 export default function Home() {
   const { colors } = useTheme();
   const s = useApp();
@@ -36,6 +40,9 @@ export default function Home() {
   const unread = s.notifications.some((n) => !n.read);
   const delta = scan && prev ? scan.score - prev.score : null;
   const nextStep = prog.steps.find((x) => !done.includes(x.id));
+  const name = firstName(s.session?.name ?? '');
+  const [tip, setTip] = useState(false);
+  const openReport = (id: string) => router.push({ pathname: '/scan/results/[id]', params: { id } });
 
   return (
     <Screen dock>
@@ -45,7 +52,8 @@ export default function Home() {
             {longWeekday(now)}
           </Txt>
           <Txt variant="title">
-            Good {greeting(now).toLowerCase()}, {firstName(s.session?.name ?? '')}
+            Good {greeting(now).toLowerCase()}
+            {name ? `, ${name}` : ''}
           </Txt>
         </View>
         <IconButton icon="notifications-none" label={unread ? 'Notifications, new' : 'Notifications'} badge={unread} onPress={() => router.push('/notifications')} />
@@ -55,36 +63,93 @@ export default function Home() {
       </View>
 
       {scan ? (
-        <Card tone="night" padded={false} onPress={() => router.push({ pathname: '/scan/results/[id]', params: { id: scan.id } })} label={`Latest scan, score ${scan.score}`}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs, paddingRight: space.lg }}>
-            <FaceMap zones={scan.zones} width={120} height={136} density={20} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <Txt variant="caption" style={{ color: '#A6B8D4' }}>
-                Skin score
+        <Pressable
+          onPress={() => openReport(scan.id)}
+          accessibilityRole="button"
+          accessibilityLabel={`Latest scan, score ${scan.score}. View full report`}
+          style={({ pressed }) => [{ borderRadius: radius.card, overflow: 'hidden', opacity: pressed ? 0.92 : 1 }, shadow(colors, true)]}>
+          <LinearGradient colors={[colors.brand, colors.brandAlt]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flexDirection: 'row', alignItems: 'center', gap: space.lg, padding: space.lg + 2 }}>
+            <View style={{ flex: 1, gap: space.xs }}>
+              <Txt variant="heading" style={{ color: '#FFFFFF' }}>
+                Your skin overview
               </Txt>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-                <Txt variant="score" style={{ color: '#EAF2FF', fontSize: 42, lineHeight: 46 }}>
-                  {scan.score}
+              <View style={{ alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 3 }}>
+                <Txt variant="caption" style={{ color: '#FFFFFF' }}>
+                  Latest scan · {weekdayDayMonth(scan.date)}
                 </Txt>
-                {delta != null ? <StatusPill icon={delta >= 0 ? 'trending-up' : 'trending-down'} label={`${delta >= 0 ? '+' : ''}${delta}`} tone={delta >= 0 ? 'good' : 'act'} /> : null}
               </View>
-              <Txt variant="caption" style={{ color: '#A6B8D4' }} numberOfLines={2}>
-                {summaryLine(scan).split('.')[0]}
+              <Txt variant="small" numberOfLines={2} style={{ color: 'rgba(255,255,255,0.9)', marginTop: 2 }}>
+                {summaryLine(scan).split('.')[0]}.
               </Txt>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                <Txt variant="smallStrong" style={{ color: '#FFFFFF' }}>
+                  View full report
+                </Txt>
+                <Icon name="chevron-right" size={18} color="#FFFFFF" />
+              </View>
             </View>
-          </View>
-        </Card>
+            <View style={{ alignItems: 'center', gap: space.xs }}>
+              <ScoreRing score={scan.score} size={96} onDark />
+              {delta != null ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 99, paddingHorizontal: 9, paddingVertical: 3 }}>
+                  <Icon name={delta >= 0 ? 'trending-up' : 'trending-down'} size={14} color="#FFFFFF" />
+                  <Txt variant="caption" style={{ color: '#FFFFFF' }}>
+                    {`${delta >= 0 ? '+' : ''}${delta} since last`}
+                  </Txt>
+                </View>
+              ) : null}
+            </View>
+          </LinearGradient>
+        </Pressable>
       ) : (
-        <Card tone="night">
-          <Txt variant="heading" style={{ color: '#EAF2FF' }}>
-            No scans yet
-          </Txt>
-          <Txt variant="body" style={{ color: '#A6B8D4', marginTop: 4, marginBottom: space.md }}>
-            Your first one takes about a minute.
-          </Txt>
-          <Button label="Scan my skin" icon="center-focus-strong" onPress={() => router.push('/scan')} />
-        </Card>
+        <View style={[{ borderRadius: radius.card, overflow: 'hidden' }, shadow(colors, true)]}>
+          <LinearGradient colors={[colors.brand, colors.brandAlt]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ padding: space.lg + 2, gap: space.sm }}>
+            <View style={{ position: 'absolute', right: -18, top: -10, opacity: 0.22 }}>
+              <LogoMark size={150} />
+            </View>
+            <Txt variant="caption" style={{ color: 'rgba(255,255,255,0.85)' }}>
+              STEP 1 OF YOUR SKIN JOURNEY
+            </Txt>
+            <Txt variant="title" style={{ color: '#FFFFFF' }}>
+              Take your first{'\n'}skin scan
+            </Txt>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.sm }}>
+              {tip ? (
+                <View
+                  accessibilityLiveRegion="polite"
+                  style={[{ position: 'absolute', left: 0, right: 0, bottom: '100%', marginBottom: space.sm, backgroundColor: colors.surface, borderRadius: radius.control, padding: space.md }, shadow(colors, true)]}>
+                  <Txt variant="small">30 seconds with your front camera. We read acne, redness, pores, dark spots and more.</Txt>
+                  <View style={{ position: 'absolute', bottom: -6, left: 152, width: 12, height: 12, backgroundColor: colors.surface, transform: [{ rotate: '45deg' }] }} />
+                </View>
+              ) : null}
+              <Button label="Scan my skin" icon="center-focus-strong" variant="light" compact onPress={() => router.push('/scan')} />
+              <Pressable
+                onPress={() => setTip((v) => !v)}
+                accessibilityRole="button"
+                accessibilityLabel="How the scan works"
+                accessibilityState={{ expanded: tip }}
+                hitSlop={8}
+                style={({ pressed }) => ({ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.7 : 1 })}>
+                <Icon name={tip ? 'close' : 'info-outline'} size={20} color="#FFFFFF" />
+              </Pressable>
+            </View>
+          </LinearGradient>
+        </View>
       )}
+
+      <View style={{ gap: space.sm }}>
+        {scan ? null : <SectionTitle title="Your skin overview" />}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+          {CONCERN_ORDER.map((k) => (
+            <ConcernTile key={k} k={k} reading={scan?.concerns[k]} onPress={scan ? () => router.push({ pathname: '/scan/concern/[key]', params: { key: k, scan: scan.id } }) : () => router.push('/scan')} />
+          ))}
+        </View>
+        {scan ? null : (
+          <Txt variant="caption" color="muted" align="center">
+            Your first scan fills these in.
+          </Txt>
+        )}
+      </View>
 
       {prog.total ? (
         <Card>
@@ -156,47 +221,24 @@ export default function Home() {
         </Card>
       ) : null}
 
-      <Card onPress={() => router.push('/scan')} label="Next scan">
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-          <IconTile icon="event-repeat" size={38} />
-          <View style={{ flex: 1 }}>
-            <Txt variant="bodyStrong">
-              {rescan == null ? 'Take your first scan' : rescan <= 0 ? 'Time for a new scan' : `Next scan in ${rescan} day${rescan === 1 ? '' : 's'}`}
-            </Txt>
-            <Txt variant="caption" color="muted">
-              {s.settings.rescanDue ? 'Your dermatologist asked for this one' : 'Same light, same time works best'}
-            </Txt>
-          </View>
-        </View>
-      </Card>
-
-      {s.scans.length > 1 ? (
-        <Card onPress={() => router.push('/progress')} label="Your progress">
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-            <IconTile icon="insights" size={38} tone="peach" />
+      {scan ? (
+        <Pressable onPress={() => router.push('/scan')} accessibilityRole="button" accessibilityLabel="Scan my skin" style={({ pressed }) => [{ borderRadius: radius.card, overflow: 'hidden', opacity: pressed ? 0.9 : 1 }, shadow(colors)]}>
+          <LinearGradient colors={[colors.brand, colors.brandAlt]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg }}>
+            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="center-focus-strong" size={22} color="#FFFFFF" />
+            </View>
             <View style={{ flex: 1 }}>
-              <Txt variant="bodyStrong">Your progress</Txt>
-              <Txt variant="caption" color="muted">
-                {s.scans.length} scans so far
+              <Txt variant="bodyStrong" style={{ color: '#FFFFFF' }}>
+                {rescan == null || rescan <= 0 ? 'Time for a new scan' : `Next scan in ${rescan} day${rescan === 1 ? '' : 's'}`}
+              </Txt>
+              <Txt variant="caption" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                {s.settings.rescanDue ? 'Your dermatologist asked for this one' : 'Same light, same time works best'}
               </Txt>
             </View>
-            <Icon name="chevron-right" size={22} color={colors.textMuted} />
-          </View>
-        </Card>
-      ) : appt ? null : (
-        <Card onPress={() => router.push('/doctors')} label="See a dermatologist">
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-            <IconTile icon="stethoscope" size={38} tone="clinician" />
-            <View style={{ flex: 1 }}>
-              <Txt variant="bodyStrong">See a dermatologist</Txt>
-              <Txt variant="caption" color="muted">
-                PMDC-verified, video or clinic
-              </Txt>
-            </View>
-            <Icon name="chevron-right" size={22} color={colors.textMuted} />
-          </View>
-        </Card>
-      )}
+            <Icon name="chevron-right" size={22} color="#FFFFFF" />
+          </LinearGradient>
+        </Pressable>
+      ) : null}
     </Screen>
   );
 }

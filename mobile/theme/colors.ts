@@ -78,15 +78,15 @@ export const lightColors: ThemeColors = {
   peach: '#FF8F6B',
   peachDeep: '#C4532F',
   peachWash: '#FFEEE6',
-  butter: '#FFD66E',
-  butterDeep: '#7A5600',
-  butterWash: '#FFF5D6',
+  butter: '#4BB3C2',
+  butterDeep: '#1D7480',
+  butterWash: '#E0F3F5',
   good: '#17855A',
   goodIcon: '#17855A',
   goodWash: '#E1F4EA',
-  watch: '#9A6500',
-  watchIcon: '#C98B10',
-  watchWash: '#FFF1D1',
+  watch: '#D45A2A',
+  watchIcon: '#EE7A43',
+  watchWash: '#FDECE3',
   act: '#C8363A',
   actIcon: '#C8363A',
   actWash: '#FDE5E4',
@@ -119,15 +119,15 @@ export const darkColors: ThemeColors = {
   peach: '#FF9E80',
   peachDeep: '#FFB79F',
   peachWash: '#3A2320',
-  butter: '#FFD66E',
-  butterDeep: '#FFE29A',
-  butterWash: '#352B14',
+  butter: '#4FC3CF',
+  butterDeep: '#9BE2EA',
+  butterWash: '#10373C',
   good: '#6FDCA8',
   goodIcon: '#4FC98F',
   goodWash: '#143326',
-  watch: '#F2C46B',
-  watchIcon: '#E5AE3F',
-  watchWash: '#352A12',
+  watch: '#FFA27A',
+  watchIcon: '#FF8A5C',
+  watchWash: '#3A2218',
   act: '#FF8E8A',
   actIcon: '#F06A66',
   actWash: '#3D1C20',
@@ -158,7 +158,7 @@ export const nightColors: ThemeColors = {
 /** Concern scale. Glowing dots on Night only (face map, concern bars). */
 export const concernScale = {
   Clear: '#5AB4E0',
-  Mild: '#FFD66E',
+  Mild: '#FFB088',
   Moderate: '#FF9563',
   High: '#FF4F6D',
 } as const;
@@ -167,6 +167,16 @@ export type ConcernLevel = keyof typeof concernScale;
 
 /** Fitzpatrick I to VI: the logo, the skin-tone picker and default avatars only. Never status. */
 export const fitzpatrick = ['#F5DCCB', '#EBC2A2', '#D4A07A', '#A8714C', '#7A4B31', '#4A2E22'] as const;
+
+/** Per-concern accent hues: icons and bars on the Home skin overview. Identity, not severity. */
+export const concernHue = {
+  acne: '#4A82E8',
+  dryness: '#43B08F',
+  redness: '#E0699A',
+  darkSpots: '#7C5CE6',
+  sensitivity: '#3DB2CC',
+  pores: '#5C63DE',
+} as const;
 
 /** Dermatologist screens swap clinical blue for teal-green everywhere. */
 export function withRole(c: ThemeColors, clinician: boolean): ThemeColors {

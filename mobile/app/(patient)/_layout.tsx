@@ -1,10 +1,14 @@
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
 
 import { TabBar } from '@/components/TabBar';
-import { useApp } from '@/store/AppStore';
+import { homeFor } from '@/lib/nav';
+import { useStore } from '@/store/AppStore';
 
+/** Only a signed-in patient sees these tabs; anyone else (signed out, other role) goes to their own start screen. */
 export default function PatientTabs() {
-  const s = useApp();
+  const { state: s, ready } = useStore();
+  if (!ready) return null;
+  if (s.session?.role !== 'patient') return <Redirect href={homeFor(s)} />;
   const unread = s.threads.reduce((n, t) => n + t.unreadForPatient, 0);
   return (
     <Tabs

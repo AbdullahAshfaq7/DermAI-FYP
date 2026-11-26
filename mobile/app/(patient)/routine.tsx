@@ -57,7 +57,7 @@ export default function Routine() {
                 borderColor: colors.brand,
                 opacity: d.future ? 0.6 : 1,
               }}>
-              {d.done ? <Icon name="check" size={16} color="#5A3E00" /> : null}
+              {d.done ? <Icon name="check" size={16} color={colors.onFill} /> : null}
             </View>
             <Txt variant="caption" color="muted" style={{ fontSize: 11 }}>
               {d.letter}

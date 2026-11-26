@@ -20,7 +20,7 @@ import {
 import { useSafeAreaInsets, type Edge } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '@/components/ui/Icon';
-import { fitzpatrick, type ConcernLevel, type ThemeColors } from '@/theme/colors';
+import { type ConcernLevel, type ThemeColors } from '@/theme/colors';
 import { makeStyles, useTheme } from '@/theme/ThemeProvider';
 import { dockClearance, fonts, hitTarget, radius, space, type, type TypeVariant } from '@/theme/tokens';
 
@@ -839,11 +839,11 @@ export function initials(name: string): string {
     .join('');
 }
 
-export function Avatar({ name, size = 44, tone, clinician, uri }: { name: string; size?: number; tone?: number; clinician?: boolean; uri?: string | null }) {
+/** Initials on a brand wash (teal-green for doctors). `tone` is accepted for older callers but no longer colours it. */
+export function Avatar({ name, size = 44, clinician, uri }: { name: string; size?: number; tone?: number; clinician?: boolean; uri?: string | null }) {
   const { colors } = useTheme();
-  const idx = tone ?? (name.length % 6);
-  const bg = clinician ? colors.clinicianWash : fitzpatrick[idx];
-  const fg = clinician ? colors.clinicianDeep : idx >= 2 ? '#FFFFFF' : '#6B4632';
+  const bg = clinician ? colors.clinicianWash : colors.brandWash;
+  const fg = clinician ? colors.clinicianDeep : colors.brandDeep;
   if (uri) {
     return <Image source={{ uri }} accessibilityLabel={name} style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: bg }} contentFit="cover" />;
   }
